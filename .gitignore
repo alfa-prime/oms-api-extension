@@ -37,7 +37,7 @@ logs/errors.log
 temp
 handbooks
 .env
-*.json
 *.py[cod]
 *.log
 *.DS_Store
+materials

@@ -3,7 +3,7 @@
   "name": "ЕВМИАС -> ОМС",
   "version": "1.0",
   "description": "Находит данные по ФИО и вставляет их в форму.",
-  "permissions": ["scripting", "activeTab", "tabs", "cookies"],
+  "permissions": ["scripting", "activeTab", "tabs"],
   "host_permissions": [
     "http://0.0.0.0:8000/*",
     "https://gisoms.ffoms.gov.ru/*"
@@ -28,3 +28,4 @@
     }
   ]
 }
+

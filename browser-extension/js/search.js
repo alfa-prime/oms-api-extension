@@ -12,7 +12,7 @@
 import { showMessage, showError } from "./utils.js";
 // import { insertData } from "./insert.js";
 
-const API_URL = "http://0.0.0.0:8000/oms-browser-extension/search";
+const API_URL = "http://0.0.0.0:8000/extension/search";
 
 export async function searchPatient() {
   const searchBtn = document.getElementById("searchBtn");

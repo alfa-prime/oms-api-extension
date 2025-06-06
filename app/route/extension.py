@@ -10,7 +10,7 @@ from app.service import set_cookies
 
 settings = get_settings()
 
-router = APIRouter(prefix="/oms-browser-extension", tags=["endpoint для браузерного расширения"])
+router = APIRouter(prefix="/extension", tags=["Расширение"])
 
 SEARCH_PERIOD_START_DATE = settings.SEARCH_PERIOD_START_DATE
 
@@ -93,38 +93,4 @@ async def search_patients_hospitals(
             detail="Данные не найдены"
         )
 
-
-    url = 'https://gisoms.ffoms.gov.ru/FFOMS/action/ReferralHospitalization/ListMo'
-
-
-
     return result
-
-# @route_handler(debug=settings.DEBUG_ROUTE)
-# @router.post(
-#     path="/extended_search",
-#     summary="Получить расширенные сведения о конкретной госпитализации",
-#     description="Получить расширенные сведения о конкретной госпитализации",
-#     responses={
-#         200: {"description": "Успешный ответ с данными"},
-#         404: {"description": "Данные не найдены"},
-#         500: {"description": "Внутренняя ошибка сервера"},
-#         502: {"description": "Ошибка при получении данных от внешней системы (ЕВМИАС)"}
-#     }
-# )
-# async def get_extended_patient_hospital_info(
-#         event_id: Field(..., description="Идентификатор госпитализации"),
-#         cookies: Annotated[dict[str, str], Depends(set_cookies)],
-#         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
-# ):
-#     """
-#     Получить расширенные сведения о конкретной госпитализации
-#     """
-#     logger.info("Запрос на поиск дополнительных сведений о госпитализации")
-#
-#     return {
-#         "referral_number": "б/н",
-#         "referral_org_name": "Городская поликлиника № 1",
-#         "referral_date": "03.06.2025",
-#         "indication_for_hospitalization": "Нетипичное течение заболевания и (или) отсутствие эффекта"
-#     }
