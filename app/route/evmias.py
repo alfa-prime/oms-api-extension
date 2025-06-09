@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Body
 
 from app.core import get_settings, HTTPXClient, get_http_service
 from app.core.decorators import route_handler
@@ -12,6 +12,7 @@ HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_
 router = APIRouter(prefix="/evmias", tags=["ЕВМИАС"])
 
 
+@route_handler(debug=settings.DEBUG_ROUTE)
 @router.get(
     path="/person/{person_id}",
     summary="Получение базовой информации о пациенте",
@@ -88,6 +89,7 @@ async def hosp_by_id(
     return response.get("json", {})
 
 
+@route_handler(debug=settings.DEBUG_ROUTE)
 @router.get(
     path="/movement/{event_id}",
     summary="Получение данных о движении пациента",
@@ -119,4 +121,32 @@ async def smo_name_by_id(
         params=params,
         data=data,
     )
+    return response.get("json", {})
+
+
+@router.post("/evn_section_grid")
+async def _get_polis(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Body(..., description="ID госпитализации"),
+):
+    url = settings.BASE_URL
+    headers = HEADERS
+
+    params = {"c": "EvnSection", "m": "loadEvnSectionGrid"}
+
+    data = {
+        "EvnSection_pid": event_id,
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+        raise_for_status=True  # fetch выкинет HTTPStatusError если не 2xx
+    )
+
     return response.get("json", {})

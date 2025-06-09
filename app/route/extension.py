@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core import get_settings, HTTPXClient, get_http_service, logger
 from app.core.decorators import route_handler
-from app.model import ExtensionStartedData
+from app.model import ExtensionStartedData, EnrichmentRequestData
 from app.service import set_cookies
 
 settings = get_settings()
@@ -69,12 +69,6 @@ async def _fetch_data(
     path="/search",
     summary="Получить список пациентов по фильтру",
     description="Получить список пациентов по фильтру",
-    responses={
-        200: {"description": "Успешный ответ с данными"},
-        404: {"description": "Данные не найдены"},
-        500: {"description": "Внутренняя ошибка сервера"},
-        502: {"description": "Ошибка при получении данных от внешней системы (ЕВМИАС)"}
-    }
 )
 async def search_patients_hospitals(
         patient: ExtensionStartedData,
@@ -94,3 +88,48 @@ async def search_patients_hospitals(
         )
 
     return result
+
+
+@route_handler(debug=settings.DEBUG_ROUTE)
+@router.post(
+    path="/enrich-data",
+    summary="Обогатить данных для фронта",
+    description="Обогатить данных для фронта",
+    response_model=Dict[str, Any]
+)
+async def enrich_started_data_for_front(
+        enrich_request: EnrichmentRequestData,
+        # cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        # http_service: Annotated[HTTPXClient, Depends(get_http_service)]
+) -> Dict[str, Any]:
+    """
+    Получить список госпитализаций пациентов по фильтру
+    """
+    logger.info(
+        f"[УПРОЩЕННЫЙ] Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
+    if enrich_request.medical_orgs_list:
+        logger.info(f"[УПРОЩЕННЫЙ] Получено МО: {len(enrich_request.medical_orgs_list)} записей.")
+    else:
+        logger.info("[УПРОЩЕННЫЙ] Список МО не передан.")
+
+    # Извлекаем некоторые данные из original_evmias_data для примера
+    original_data = enrich_request.started_data
+    person_birthday = original_data.get("Person_Birthday", "ДР Н/Д")
+    card_number = original_data.get("EvnPS_NumCard", "Карта Н/Д")
+    lpu_section_name = original_data.get("LpuSection_Name", "Отделение Н/Д")
+
+    # Просто возвращаем заглушку в ожидаемом формате
+    # Ключи - это селекторы полей на целевой странице ГИС ОМС
+    mock_enriched_data = {
+        "input[name='ReferralHospitalizationNumberTicket']": "ЗАГЛУШКА б/н",
+        "input[name='ReferralHospitalizationMedIndications']": f"ЗАГЛУШКА Показания",
+        "input[name='VidMpV008Code']": "031-ЗАГЛУШКА",
+        "input[name='VidMpV008']": "ЗАГЛУШКА спец. мед. помощь",
+        "input[name='CardNumber']": card_number,  # Берем из исходных данных
+        "input[name='HospitalizationInfoNameDepartment']": lpu_section_name,  # Берем из исходных данных
+        "input[name='DateBirth']": person_birthday,  # Если нужно вставить на форму и ДР
+    }
+
+    logger.info(f"[УПРОЩЕННЫЙ] Возвращаем заглушку: {mock_enriched_data}")
+
+    return mock_enriched_data

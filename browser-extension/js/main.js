@@ -76,8 +76,15 @@ window.addEventListener("DOMContentLoaded", () => {
       }
 
       console.log("✅ МО получены (через content.js):", response.data);
-      storedListMoData = response.data;
-      showMessage("Справочник МО успешно загружен", "info");
+      // Корректное извлечение массива МО
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        storedListMoData = response.data.data;
+        showMessage("Справочник МО успешно загружен (" + storedListMoData.length + " записей)", "info");
+    } else {
+        storedListMoData = null;
+        showError("Справочник МО загружен, но не содержит записей, или неверный формат.");
+        console.error("Ожидаемая структура response.data.data не найдена или не является массивом:", response.data);
+    }
     });
   });
 });

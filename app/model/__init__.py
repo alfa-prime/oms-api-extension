@@ -1,6 +1,7 @@
-from .extension import ExtensionStartedData
+from .extension import ExtensionStartedData, EnrichmentRequestData
 
 
 __all__ = [
-    "ExtensionStartedData"
+    "ExtensionStartedData",
+    "EnrichmentRequestData"
 ]
