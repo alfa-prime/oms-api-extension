@@ -6,7 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.core import get_settings, HTTPXClient, get_http_service, logger
 from app.core.decorators import route_handler
 from app.model import ExtensionStartedData, EnrichmentRequestData
-from app.service import set_cookies
+from app.service import (
+    set_cookies,
+    get_medical_care_condition,
+    get_medical_care_form,
+    get_direction_date,
+    get_bed_profile_code,
+    fetch_person_data,
+    fetch_movement_data,
+    fetch_referral_data,
+    fetch_disease_outcome_code,
+)
 
 settings = get_settings()
 
@@ -99,37 +109,67 @@ async def search_patients_hospitals(
 )
 async def enrich_started_data_for_front(
         enrich_request: EnrichmentRequestData,
-        # cookies: Annotated[dict[str, str], Depends(set_cookies)],
-        # http_service: Annotated[HTTPXClient, Depends(get_http_service)]
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)]
 ) -> Dict[str, Any]:
     """
     Получить список госпитализаций пациентов по фильтру
     """
     logger.info(
-        f"[УПРОЩЕННЫЙ] Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
+        f"Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
     if enrich_request.medical_orgs_list:
-        logger.info(f"[УПРОЩЕННЫЙ] Получено МО: {len(enrich_request.medical_orgs_list)} записей.")
+        logger.info(f"Получено МО: {len(enrich_request.medical_orgs_list)} записей.")
     else:
-        logger.info("[УПРОЩЕННЫЙ] Список МО не передан.")
+        logger.info("Список МО не передан.")
 
     # Извлекаем некоторые данные из original_evmias_data для примера
-    original_data = enrich_request.started_data
-    person_birthday = original_data.get("Person_Birthday", "ДР Н/Д")
-    card_number = original_data.get("EvnPS_NumCard", "Карта Н/Д")
-    lpu_section_name = original_data.get("LpuSection_Name", "Отделение Н/Д")
+    started_data = enrich_request.started_data
+    person_id = started_data.get("Person_id")
+    event_id = started_data.get("EvnPS_id")
+    person_dara = await fetch_person_data(cookies, http_service, person_id)
+    movement_data = await fetch_movement_data(cookies, http_service, event_id)
+    referred_data = await fetch_referral_data(cookies, http_service, event_id)
 
-    # Просто возвращаем заглушку в ожидаемом формате
-    # Ключи - это селекторы полей на целевой странице ГИС ОМС
-    mock_enriched_data = {
-        "input[name='ReferralHospitalizationNumberTicket']": "ЗАГЛУШКА б/н",
-        "input[name='ReferralHospitalizationMedIndications']": f"ЗАГЛУШКА Показания",
-        "input[name='VidMpV008Code']": "031-ЗАГЛУШКА",
-        "input[name='VidMpV008']": "ЗАГЛУШКА спец. мед. помощь",
-        "input[name='CardNumber']": card_number,  # Берем из исходных данных
-        "input[name='HospitalizationInfoNameDepartment']": lpu_section_name,  # Берем из исходных данных
-        "input[name='DateBirth']": person_birthday,  # Если нужно вставить на форму и ДР
+    # получаем EvnSection_id для запроса получения id исхода заболевания (outcome_code)
+    event_section_id = movement_data.get("EvnSection_id", "")
+    outcome_code = await fetch_disease_outcome_code(cookies, http_service, event_section_id)
+
+    bed_profile_name = movement_data.get("LpuSectionBedProfile_Name", "")
+    bed_profile_code = await get_bed_profile_code(bed_profile_name)
+
+    gender = person_dara.get("Sex_Name", "")
+    polis_number = person_dara.get("Person_EdNum", "")
+    admission_date = started_data.get("EvnPS_setDate")
+    direction_date = await get_direction_date(admission_date)
+    discharge_date = started_data.get("EvnPS_disDate")
+    person_birthday = started_data.get("Person_Birthday", "")
+    department_name = started_data.get("LpuSection_Name", "")
+    medical_care_conditions = await get_medical_care_condition(department_name)
+    medical_care_form = await get_medical_care_form(referred_data)
+
+    diag_code = movement_data.get("Diag_Code")
+    card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
+    treatment_outcome_code = movement_data.get("LeaveType_Code")
+
+    enriched_data = {
+        "input[name='ReferralHospitalizationNumberTicket']": "б/н",
+        "input[name='ReferralHospitalizationDateTicket']": direction_date,
+        "input[name='ReferralHospitalizationMedIndications']": "001",
+        "input[name='Enp']": polis_number,
+        "input[name='DateBirth']": person_birthday,
+        "input[name='Gender']": gender,
+        "input[name='TreatmentDateStart']": admission_date,
+        "input[name='TreatmentDateEnd']": discharge_date,
+        "input[name='VidMpV008']": "31",
+        "input[name='HospitalizationInfoV006']": medical_care_conditions,\
+        "input[name='HospitalizationInfoV014']": medical_care_form,
+        "input[name='HospitalizationInfoSubdivision']": "Стационар",
+        "input[name='HospitalizationInfoNameDepartment']": department_name,
+        "input[name='HospitalizationInfoV020']": bed_profile_code,
+        "input[name='HospitalizationInfoDiagnosisMainDisease']": diag_code,
+        "input[name='CardNumber']": card_number,
+        "input[name='ResultV009']": treatment_outcome_code,
+        "input[name='IshodV012']": outcome_code
     }
 
-    logger.info(f"[УПРОЩЕННЫЙ] Возвращаем заглушку: {mock_enriched_data}")
-
-    return mock_enriched_data
+    return enriched_data

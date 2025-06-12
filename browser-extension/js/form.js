@@ -6,6 +6,7 @@
  */
 
 export function initForm() {
+console.log("[Form.js] initForm вызвана"); // Добавим лог для проверки вызова
   const now = new Date();
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 

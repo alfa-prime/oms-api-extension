@@ -1,26 +1,18 @@
-/**
- * main.js
- * Точка входа. Подключает всё вместе:
- *  - инициализация формы
- *  - навешивание обработчика поиска
- *  - получение и хранение списка МО
- */
-
+// browser-extension/js/main.js
 import { initForm } from "./form.js";
-import { debounce, showError, showMessage } from "./utils.js";
-import { searchPatient } from "./search.js";
+import { debounce } from "./utils.js"; // debounce остается здесь
+//import { searchPatient } from "./search.js"; // Пока оставляем старый search.js
+import { searchPatient } from "./searchLogic.js"; // Пока оставляем старый search.js
+import { showUserError, showUserMessage } from "./ui.js"; // <--- ИЗМЕНЕНО: импорт из ui.js
 
-// Переменная для хранения списка МО
 let storedListMoData = null;
 
 export function setupSearchHandler() {
-  // Debounce-версия функции поиска (чтобы при множественных Enter не спамить запросами)
   const debouncedSearch = debounce(searchPatient, 500);
-  // Навешиваем на кнопку
-  document
-    .getElementById("searchBtn")
-    .addEventListener("click", debouncedSearch);
-  // Навешиваем на Enter в любых input
+  const searchButtonEl = document.getElementById("searchBtn"); // Можно получить ссылку здесь или в ui.js
+  if (searchButtonEl) {
+    searchButtonEl.addEventListener("click", debouncedSearch);
+  }
   document.querySelectorAll("input").forEach((input) => {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -31,60 +23,51 @@ export function setupSearchHandler() {
   });
 }
 
-// Getter для получения списка МО
 export function getStoredListMoData() {
   return storedListMoData;
 }
 
-// Запускаем всё при загрузке DOM
 window.addEventListener("DOMContentLoaded", () => {
   initForm();
   setupSearchHandler();
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs || !tabs.length) {
-      showError("Не удалось получить доступ к активной вкладке.");
+      showUserError("Не удалось получить доступ к активной вкладке."); // <--- ИЗМЕНЕНО
       return;
     }
     const tabId = tabs[0].id;
 
-    // Убедимся, что мы на нужной странице перед отправкой сообщения
-    if (
-      !tabs[0].url ||
-      !tabs[0].url.startsWith("https://gisoms.ffoms.gov.ru")
-    ) {
-      console.warn(
-        "Popup открыт не на странице ГИС ОМС. Список МО не будет запрошен.",
-      );
-      showError("Расширение предназначено для gisoms.ffoms.gov.ru");
+    if (!tabs[0].url || !tabs[0].url.startsWith("https://gisoms.ffoms.gov.ru")) {
+      console.warn("Popup открыт не на странице ГИС ОМС. Список МО не будет запрошен.");
+      showUserError("Расширение предназначено для gisoms.ffoms.gov.ru"); // <--- ИЗМЕНЕНО
       return;
     }
 
     chrome.tabs.sendMessage(tabId, { action: "FETCH_LIST_MO" }, (response) => {
-      // Этот callback сработает, когда content.js вызовет sendResponse(...)
+      if (chrome.runtime.lastError) {
+          console.error("Ошибка sendMessage для FETCH_LIST_MO:", chrome.runtime.lastError.message);
+          showUserError("Ошибка связи со страницей: " + chrome.runtime.lastError.message); // <--- ИЗМЕНЕНО
+          return;
+      }
       if (!response) {
-        showError("Нет ответа от content.js");
+        showUserError("Нет ответа от content.js для списка МО."); // <--- ИЗМЕНЕНО
         return;
       }
-
-      if (!response.success && response.status === 404) {
-        showError("Список МО временно недоступен (404). Попробуйте позже.");
-        return;
-      } else if (!response.success) {
-        showError("Не удалось получить список МО: " + response.status);
+      if (!response.success) {
+        showUserError(`Не удалось получить список МО: ${response.status || "неизвестная ошибка"}`); // <--- ИЗМЕНЕНО
         return;
       }
 
       console.log("✅ МО получены (через content.js):", response.data);
-      // Корректное извлечение массива МО
-    if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        storedListMoData = response.data.data;
-        showMessage("Справочник МО успешно загружен (" + storedListMoData.length + " записей)", "info");
-    } else {
-        storedListMoData = null;
-        showError("Справочник МО загружен, но не содержит записей, или неверный формат.");
-        console.error("Ожидаемая структура response.data.data не найдена или не является массивом:", response.data);
-    }
+      if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          storedListMoData = response.data.data;
+          showUserMessage("Справочник МО успешно загружен (" + storedListMoData.length + " записей)", "info"); // <--- ИЗМЕНЕНО
+      } else {
+          storedListMoData = null;
+          showUserError("Справочник МО: неверный формат данных."); // <--- ИЗМЕНЕНО
+          console.error("Ожидаемая структура response.data.data не найдена:", response.data);
+      }
     });
   });
 });
