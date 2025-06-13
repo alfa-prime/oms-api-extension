@@ -222,7 +222,7 @@ async def result_disease(
 
 
 @router.get(
-    path="/event1_data/{event_id}",
+    path="/event_section/{event_id}",
     summary="Получение информации по id госпитализации"
 )
 async def get_event_by_id(
@@ -248,5 +248,5 @@ async def get_event_by_id(
         data=data,
     )
 
-    # return response.get("json", {})
-    return response.get("json", {}).get("fieldsData", {})[0].get("ResultDesease_id")
+    return response.get("json", {})
+    # return response.get("json", {}).get("fieldsData", {})[0].get("ResultDesease_id")

@@ -22,7 +22,7 @@ function injectionTargetFunction(dataMapToInsert) {
 
       const check = () => {
         const modal = [...doc.querySelectorAll(modalSelector)].find((el) =>
-          el.innerText.includes("Выбор элемента")
+          el.innerText.includes("Выбор элемента"),
         );
 
         const isClosed =
@@ -60,19 +60,27 @@ function injectionTargetFunction(dataMapToInsert) {
                   bubbles: true,
                   cancelable: true,
                   view: iframeWindow,
-                })
+                }),
               );
             });
             console.log(`[REFERENCE] Клик по полю ${fieldSelector}`);
 
             setTimeout(() => {
               const headerText = column.trim();
-              const allInputs = doc.querySelectorAll(".x-grid-header-ct input[type='text']");
+              const allInputs = doc.querySelectorAll(
+                ".x-grid-header-ct input[type='text']",
+              );
 
               let filterInput = null;
               for (const inputEl of allInputs) {
-                const columnEl = inputEl.closest(".x-column-header") || inputEl.closest("table")?.parentElement?.closest(".x-column-header");
-                const textSpan = columnEl?.querySelector(".x-column-header-text");
+                const columnEl =
+                  inputEl.closest(".x-column-header") ||
+                  inputEl
+                    .closest("table")
+                    ?.parentElement?.closest(".x-column-header");
+                const textSpan = columnEl?.querySelector(
+                  ".x-column-header-text",
+                );
                 if (textSpan?.textContent.trim() === headerText) {
                   filterInput = inputEl;
                   break;
@@ -91,12 +99,12 @@ function injectionTargetFunction(dataMapToInsert) {
                   which: 13,
                   bubbles: true,
                   cancelable: true,
-                })
+                }),
               );
 
               setTimeout(() => {
                 const checkerTd = doc.querySelector(
-                  "tr.x-grid-row td.x-grid-cell-row-checker"
+                  "tr.x-grid-row td.x-grid-cell-row-checker",
                 );
                 if (!checkerTd) return reject("Чекбокс строки не найден");
 
@@ -106,14 +114,14 @@ function injectionTargetFunction(dataMapToInsert) {
                       bubbles: true,
                       cancelable: true,
                       view: iframeWindow,
-                    })
+                    }),
                   );
                 });
 
                 setTimeout(() => {
-                  const btnSpan = [...doc.querySelectorAll("span.x-btn-inner")].find(
-                    (span) => span.textContent.trim() === "Выбрать"
-                  );
+                  const btnSpan = [
+                    ...doc.querySelectorAll("span.x-btn-inner"),
+                  ].find((span) => span.textContent.trim() === "Выбрать");
                   const btn = btnSpan?.closest(".x-btn");
                   if (!btn) return reject("Кнопка 'Выбрать' не найдена");
 
@@ -123,8 +131,8 @@ function injectionTargetFunction(dataMapToInsert) {
                         bubbles: true,
                         cancelable: true,
                         view: iframeWindow,
-                      })
-                    )
+                      }),
+                    ),
                   );
 
                   resolve("Успех");
@@ -237,8 +245,7 @@ function injectionTargetFunction(dataMapToInsert) {
         iframeWindow: iframe.contentWindow,
         fieldSelector: "input[name='HospitalizationInfoV014']",
         column: "Код",
-        value:
-          dataMapToInsert["input[name='HospitalizationInfoV014']"] || "",
+        value: dataMapToInsert["input[name='HospitalizationInfoV014']"] || "",
       });
     })
     .then(() => waitForReferenceWindowClose(doc, 5000))
@@ -260,7 +267,9 @@ function injectionTargetFunction(dataMapToInsert) {
         fieldSelector: "input[name='HospitalizationInfoDiagnosisMainDisease']",
         column: "Код МКБ",
         value:
-          dataMapToInsert["input[name='HospitalizationInfoDiagnosisMainDisease']"] || "",
+          dataMapToInsert[
+            "input[name='HospitalizationInfoDiagnosisMainDisease']"
+          ] || "",
       });
     })
     .then(() => waitForReferenceWindowClose(doc, 5000))
@@ -270,9 +279,27 @@ function injectionTargetFunction(dataMapToInsert) {
         iframeWindow: iframe.contentWindow,
         fieldSelector: "input[name='HospitalizationInfoV020']",
         column: "Код",
-        value:
-          dataMapToInsert["input[name='HospitalizationInfoV020']"] || "",
+        value: dataMapToInsert["input[name='HospitalizationInfoV020']"] || "",
       });
+    })
+    .then(() => waitForReferenceWindowClose(doc, 5000))
+    .then(() => {
+      const value =
+        dataMapToInsert["input[name='HospitalizationInfoC_ZABV027']"];
+      if (value) {
+        return selectFromReferenceField({
+          doc,
+          iframeWindow: iframe.contentWindow,
+          fieldSelector: "input[name='HospitalizationInfoC_ZABV027']",
+          column: "Код",
+          value,
+        }).then(() => waitForReferenceWindowClose(doc, 5000));
+      } else {
+        console.log(
+          "[SKIP] HospitalizationInfoC_ZABV027 пропущен (нет значения)",
+        );
+        return Promise.resolve();
+      }
     })
     .then(() => waitForReferenceWindowClose(doc, 5000))
     .then(() => {
@@ -281,8 +308,7 @@ function injectionTargetFunction(dataMapToInsert) {
         iframeWindow: iframe.contentWindow,
         fieldSelector: "input[name='ResultV009']",
         column: "Код",
-        value:
-          dataMapToInsert["input[name='ResultV009']"] || "",
+        value: dataMapToInsert["input[name='ResultV009']"] || "",
       });
     })
     .then(() => waitForReferenceWindowClose(doc, 5000))
@@ -292,8 +318,7 @@ function injectionTargetFunction(dataMapToInsert) {
         iframeWindow: iframe.contentWindow,
         fieldSelector: "input[name='IshodV012']",
         column: "Код",
-        value:
-          dataMapToInsert["input[name='IshodV012']"] || "",
+        value: dataMapToInsert["input[name='IshodV012']"] || "",
       });
     })
     .then(() => waitForReferenceWindowClose(doc, 5000))
@@ -314,13 +339,15 @@ function injectionTargetFunction(dataMapToInsert) {
         "input[name='DateBirth']",
         "input[name='TreatmentDateEnd']",
         "input[name='TreatmentDateStart']",
+        "input[name='HospitalizationInfoC_ZABV027']",
       ];
 
       if (dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"]) {
         fillDateInput({
           doc,
           selector: "input[name='ReferralHospitalizationDateTicket']",
-          value: dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"],
+          value:
+            dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"],
           iframeWindow: iframe.contentWindow,
         });
       }
@@ -334,7 +361,7 @@ function injectionTargetFunction(dataMapToInsert) {
         });
       }
 
-      if (dataMapToInsert["input[name='TreatmentDateStart']"]) {
+      if (dataMapToInsert["input[name='TreatmentDateEnd']"]) {
         fillDateInput({
           doc,
           selector: "input[name='TreatmentDateEnd']",

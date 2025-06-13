@@ -15,7 +15,7 @@ from app.service import (
     fetch_person_data,
     fetch_movement_data,
     fetch_referral_data,
-    fetch_disease_outcome_code,
+    fetch_disease_outcome_code_and_disease_type_code,
 )
 
 settings = get_settings()
@@ -132,7 +132,8 @@ async def enrich_started_data_for_front(
 
     # получаем EvnSection_id для запроса получения id исхода заболевания (outcome_code)
     event_section_id = movement_data.get("EvnSection_id", "")
-    outcome_code = await fetch_disease_outcome_code(cookies, http_service, event_section_id)
+    outcome_code, disease_type_code = \
+        await fetch_disease_outcome_code_and_disease_type_code(cookies, http_service, event_section_id)
 
     bed_profile_name = movement_data.get("LpuSectionBedProfile_Name", "")
     bed_profile_code = await get_bed_profile_code(bed_profile_name)
@@ -144,6 +145,7 @@ async def enrich_started_data_for_front(
     discharge_date = started_data.get("EvnPS_disDate")
     person_birthday = started_data.get("Person_Birthday", "")
     department_name = started_data.get("LpuSection_Name", "")
+
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
 
@@ -169,7 +171,8 @@ async def enrich_started_data_for_front(
         "input[name='HospitalizationInfoDiagnosisMainDisease']": diag_code,
         "input[name='CardNumber']": card_number,
         "input[name='ResultV009']": treatment_outcome_code,
-        "input[name='IshodV012']": outcome_code
+        "input[name='IshodV012']": outcome_code,
+        "input[name='HospitalizationInfoC_ZABV027']": disease_type_code
     }
 
     return enriched_data
