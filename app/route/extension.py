@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import List, Dict, Any, Annotated
 
@@ -8,14 +9,17 @@ from app.core.decorators import route_handler
 from app.model import ExtensionStartedData, EnrichmentRequestData
 from app.service import (
     set_cookies,
+    get_referred_organization,
     get_medical_care_condition,
     get_medical_care_form,
     get_direction_date,
     get_bed_profile_code,
+    get_outcome_code,
+    get_disease_type_code,
     fetch_person_data,
     fetch_movement_data,
     fetch_referral_data,
-    fetch_disease_outcome_code_and_disease_type_code,
+    fetch_disease_data,
 )
 
 settings = get_settings()
@@ -96,7 +100,6 @@ async def search_patients_hospitals(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Данные не найдены"
         )
-
     return result
 
 
@@ -119,6 +122,22 @@ async def enrich_started_data_for_front(
         f"Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
     if enrich_request.medical_orgs_list:
         logger.info(f"Получено МО: {len(enrich_request.medical_orgs_list)} записей.")
+        # result = {}
+        # for item in enrich_request.medical_orgs_list:
+        #     result[item.FullName] = {
+        #         'registry_code': item.RegistryCode,
+        #         'code': item.CodeMo,
+        #         'name': item.Name,
+        #         'short_name': item.ShortName,
+        #         'id': item.Id,
+        #         'inn': item.Inn,
+        #         'kpp': item.Kpp,
+        #         'ogrn': item.Ogrn,
+        #     }
+        # with open("medical_orgs.py", "w", encoding="utf-8") as f:
+        #     f.write("# Автогенерируемый справочник МО\n")
+        #     f.write("ORGS_MAP = ")
+        #     f.write(repr(result))
     else:
         logger.info("Список МО не передан.")
 
@@ -126,24 +145,32 @@ async def enrich_started_data_for_front(
     started_data = enrich_request.started_data
     person_id = started_data.get("Person_id")
     event_id = started_data.get("EvnPS_id")
+    logger.debug(f"Извлечены данные: person_id={person_id}, event_id={event_id}")
+
     person_dara = await fetch_person_data(cookies, http_service, person_id)
     movement_data = await fetch_movement_data(cookies, http_service, event_id)
     referred_data = await fetch_referral_data(cookies, http_service, event_id)
 
+    referred_organization = await get_referred_organization(referred_data)
+
     # получаем EvnSection_id для запроса получения id исхода заболевания (outcome_code)
     event_section_id = movement_data.get("EvnSection_id", "")
-    outcome_code, disease_type_code = \
-        await fetch_disease_outcome_code_and_disease_type_code(cookies, http_service, event_section_id)
+    disease_data = await fetch_disease_data(cookies, http_service, event_section_id)
+    outcome_code = await get_outcome_code(disease_data)
+    disease_type_code = await get_disease_type_code(disease_data)
 
     bed_profile_name = movement_data.get("LpuSectionBedProfile_Name", "")
     bed_profile_code = await get_bed_profile_code(bed_profile_name)
 
-    gender = person_dara.get("Sex_Name", "")
+
     polis_number = person_dara.get("Person_EdNum", "")
+    person_birthday = started_data.get("Person_Birthday", "")
+    gender = person_dara.get("Sex_Name", "")
+
     admission_date = started_data.get("EvnPS_setDate")
     direction_date = await get_direction_date(admission_date)
     discharge_date = started_data.get("EvnPS_disDate")
-    person_birthday = started_data.get("Person_Birthday", "")
+
     department_name = started_data.get("LpuSection_Name", "")
 
     medical_care_conditions = await get_medical_care_condition(department_name)
@@ -172,7 +199,8 @@ async def enrich_started_data_for_front(
         "input[name='CardNumber']": card_number,
         "input[name='ResultV009']": treatment_outcome_code,
         "input[name='IshodV012']": outcome_code,
-        "input[name='HospitalizationInfoC_ZABV027']": disease_type_code
+        "input[name='HospitalizationInfoC_ZABV027']": disease_type_code,
+        "input[name='ReferralHospitalizationSendingDepartment']":referred_organization
     }
 
     return enriched_data

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     EVMIAS_PERMUTATION: str
 
     # === Application Logic Parameters ===
+    MO_REGISTRY_NUMBER: str
     LPU_ID: str
     KSG_YEAR: str
     SEARCH_PERIOD_START_DATE: str

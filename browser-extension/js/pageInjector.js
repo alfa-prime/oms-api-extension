@@ -42,6 +42,22 @@ function injectionTargetFunction(dataMapToInsert) {
     });
   }
 
+  function waitForReferenceWindowOpen(doc, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+
+    const check = () => {
+      const filters = doc.querySelectorAll(".x-grid-header-ct input[type='text']");
+      if (filters.length > 0) return resolve();
+      if (Date.now() - start > timeout)
+        return reject("Таймаут ожидания открытия справочника");
+      setTimeout(check, 100);
+    };
+
+    check();
+  });
+}
+
   function selectFromReferenceField({
     doc,
     iframeWindow,
@@ -64,6 +80,7 @@ function injectionTargetFunction(dataMapToInsert) {
               );
             });
             console.log(`[REFERENCE] Клик по полю ${fieldSelector}`);
+
 
             setTimeout(() => {
               const headerText = column.trim();
@@ -323,6 +340,25 @@ function injectionTargetFunction(dataMapToInsert) {
     })
     .then(() => waitForReferenceWindowClose(doc, 5000))
     .then(() => {
+      const value =
+        dataMapToInsert["input[name='ReferralHospitalizationSendingDepartment']"];
+      if (value) {
+        return selectFromReferenceField({
+          doc,
+          iframeWindow: iframe.contentWindow,
+          fieldSelector: "input[name='ReferralHospitalizationSendingDepartment']",
+          column: "Реестровый номер",
+          value,
+        }).then(() => waitForReferenceWindowClose(doc, 5000));
+      } else {
+        console.log(
+          "[SKIP] ReferralHospitalizationSendingDepartment пропущен (нет значения)",
+        );
+        return Promise.resolve();
+      }
+    })
+    .then(() => waitForReferenceWindowClose(doc, 5000))
+    .then(() => {
       let allElementsFound = true;
 
       const skipSelectors = [
@@ -340,6 +376,7 @@ function injectionTargetFunction(dataMapToInsert) {
         "input[name='TreatmentDateEnd']",
         "input[name='TreatmentDateStart']",
         "input[name='HospitalizationInfoC_ZABV027']",
+        "input[name='ReferralHospitalizationSendingDepartment']",
       ];
 
       if (dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"]) {
