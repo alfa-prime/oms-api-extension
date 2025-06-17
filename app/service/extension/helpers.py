@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 
 from app.core import logger, get_settings
-from app.mapper import bed_profiles, disease_outcome_ids
+from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs
+from app.service import fetch_referred_org_by_id
 
 settings = get_settings()
 
@@ -12,8 +13,8 @@ async def get_medical_care_condition(lpu_section_name: str) -> str:
     """
     inpatient_care = "1"
     day_hospital_care = "2"
-    logger.info(f"Определяем условия оказания медицинской помощи. Отделение: {lpu_section_name}")
-    return day_hospital_care if lpu_section_name.startswith("ДС") else inpatient_care
+    logger.debug(f"Определяем условия оказания медицинской помощи. Отделение: {lpu_section_name}")
+    return day_hospital_care if lpu_section_name == "Дневной стационар" else inpatient_care
 
 
 async def get_direction_date(admission_date: str) -> str | None:
@@ -36,23 +37,51 @@ async def get_direction_date(admission_date: str) -> str | None:
     return None
 
 
-
-async def get_referred_organization(data: dict):
+async def get_referred_organization(cookies, http_service, data: dict) -> str | None:
     """
     Определяет организацию направившую пациента на госпитализацию, если она указана
     """
-    referred_by_other_medical_organization = "2"
-    referred_by_department = "1"
+    REFERRAL_BY_OTHER_MO = "2"  # noqa
+    REFERRAL_BY_DEPARTMENT = "1"  # noqa
 
-    referral_type_id = str(data.get("PrehospDirect_id"))
-    logger.info(f"Определяем организацию направившую пациента на госпитализацию. evmias_id: {referral_type_id}")
+    referral_type = str(data.get("PrehospDirect_id"))
 
-    if referral_type_id == referred_by_other_medical_organization:
-        return "2"
-    if referral_type_id == referred_by_department:
-        logger.info("Направление поступило из своего отделения")
-        logger.info(settings.MO_REGISTRY_NUMBER)
+    if referral_type == REFERRAL_BY_OTHER_MO:
+        org_id = str(data.get("Org_did"))
+        if not org_id:
+            logger.debug("Org_did отсутствует в данных.")
+            return None
+
+        org_info = await fetch_referred_org_by_id(cookies, http_service, org_id)
+        org_name = org_info.get("Org_Name") if org_info else None
+        logger.debug(f"Наименование организации направившей госпитализацию: {org_name}")
+
+        if not org_name:
+            return None
+
+        org_data = medical_orgs.get(org_name)
+        if not org_data:
+            logger.warning(f"Организация '{org_name}' не найдена в справочнике организаций")
+            return None
+
+        return org_data.get("registry_code")
+
+    elif referral_type == REFERRAL_BY_DEPARTMENT:
         return settings.MO_REGISTRY_NUMBER
+
+    return None
+
+
+async def get_department_name(data: dict) -> str | None:
+    """
+    Возвращает название отделения госпитализации
+    """
+    name = data.get("LpuSection_Name", "").strip()
+    if not name:
+        return None
+    if name.startswith("ДС"):
+        return "Дневной стационар"
+    return name.replace(" стационар ММЦ", "").replace(" ММЦ", "")
 
 
 async def get_medical_care_form(data: dict) -> str | None:
@@ -68,7 +97,7 @@ async def get_medical_care_form(data: dict) -> str | None:
         return None
 
     medical_care_form_id = str(raw_medical_care_form_id)
-    logger.info(f"Определяем код формы медицинской помощи. evmias_id: {medical_care_form_id}")
+    logger.debug(f"Определяем код формы медицинской помощи. evmias_id: {medical_care_form_id}")
 
     match medical_care_form_id:
         case "2":
@@ -87,7 +116,7 @@ async def get_bed_profile_code(bed_profile_name: str) -> str | None:
     if not bed_profile_id:
         logger.warning(f"Не найден код профиля койки для: {bed_profile_name}")
         return None
-    logger.info(f"Определяем код профиля койки: {bed_profile_name}, код: {bed_profile_id}")
+    logger.debug(f"Определяем код профиля койки: {bed_profile_name}, код: {bed_profile_id}")
     return str(bed_profile_id)
 
 
@@ -101,7 +130,7 @@ async def get_outcome_code(disease_data: dict) -> str | None:
         logger.warning(f"Не найден исход заболевания для evmias_id: {outcome_code_evmias}")
         return None
     outcome_code = outcome_entry.get("code")
-    logger.info(f"Определяем код исхода лечения: evmias_id {outcome_code_evmias}, код: {outcome_code}")
+    logger.debug(f"Определяем код исхода лечения: evmias_id {outcome_code_evmias}, код: {outcome_code}")
     return outcome_code
 
 
@@ -114,7 +143,7 @@ async def get_disease_type_code(disease_data: dict) -> str | None:
     known_chronic = "3"  # ранее установленное хроническое заболевание
 
     disease_type_code = disease_data.get("DeseaseType_id")
-    logger.info(f"Определяем код характера основного заболевания. evmias_id: {disease_type_code}")
+    logger.debug(f"Определяем код характера основного заболевания. evmias_id: {disease_type_code}")
 
     if disease_type_code:
         match disease_type_code:
@@ -126,5 +155,3 @@ async def get_disease_type_code(disease_data: dict) -> str | None:
                 return acute
             case _:
                 return None
-
-

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 
 tags_metadata = [
     {"name": "Расширение", "description": "запросы из расширения к ЕВМИАС для ГИС ОМС"},
-    {"name": "ЕВМИАС", "description": "Всяческие запросы к ЕВМИАС"},
+    # {"name": "ЕВМИАС", "description": "Всяческие запросы к ЕВМИАС"},
 ]
 
 app = FastAPI(

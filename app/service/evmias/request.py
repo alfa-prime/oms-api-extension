@@ -111,3 +111,28 @@ async def fetch_disease_data(
         raise_for_status=True,
     )
     return response.get("json", {}).get("fieldsData", {})[0]
+
+
+@log_and_catch(debug=settings.DEBUG_HTTP)
+async def fetch_referred_org_by_id(
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        org_id: str
+):
+    url = settings.BASE_URL
+    headers = HEADERS
+    params = {"c": "Org", "m": "getOrgList"}
+    data = {
+        "Org_id": org_id,
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+    )
+
+    return response.get("json", {})[0]

@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Path, Body
 
 from app.core import get_settings, HTTPXClient, get_http_service
 from app.core.decorators import route_handler
-from app.service import set_cookies, fetch_person_data, fetch_movement_data
+from app.service import (
+    set_cookies,
+    fetch_person_data,
+    fetch_movement_data,
+    fetch_referral_data,
+    fetch_referred_org_by_id
+)
 
 settings = get_settings()
 HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_HEADERS_REFERER_URL}
@@ -28,7 +34,6 @@ async def person_by_id(
         http_service=http_service,
         person_id=person_id
     )
-
     return response
 
 
@@ -95,25 +100,12 @@ async def get_referred(
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
         event_id: str = Path(..., description="id события")
 ):
-    url = settings.BASE_URL
-    headers = HEADERS
-    params = {"c": "EvnPS", "m": "loadEvnPSEditForm"}
-    data = {
-        "EvnPS_id": event_id,
-        "archiveRecord": "0",
-        "delDocsView": "0",
-        "attrObjects": [{"object": "EvnPSEditWindow", "identField": "EvnPS_id"}],
-    }
-
-    response = await http_service.fetch(
-        url=url,
-        method="POST",
+    response = await fetch_referral_data(
         cookies=cookies,
-        headers=headers,
-        params=params,
-        data=data,
+        http_service=http_service,
+        event_id=event_id
     )
-    return response.get("json", {})
+    return response
 
 
 @router.post("/evn_section_grid")
@@ -175,6 +167,7 @@ async def _get_polis(
 
     return response.get("json", {})
 
+
 @router.get(
     path="/result_disease",
     summary="исход заболевания"
@@ -199,7 +192,6 @@ async def result_disease(
         "object": "ResultDesease",
     }
 
-
     response = await http_service.fetch(
         url=url,
         method="POST",
@@ -218,7 +210,6 @@ async def result_disease(
         result[id_] = {"name": name, "code": code}
 
     return result
-
 
 
 @router.get(
@@ -249,4 +240,15 @@ async def get_event_by_id(
     )
 
     return response.get("json", {})
-    # return response.get("json", {}).get("fieldsData", {})[0].get("ResultDesease_id")
+
+
+@router.get(
+    path="/org/{org_id}",
+    summary="Получение направившей организации по id"
+)
+async def get_event_by_id(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        org_id: str = Path(..., description="id организации")
+):
+    return await fetch_referred_org_by_id(cookies=cookies, http_service=http_service, org_id=org_id)
