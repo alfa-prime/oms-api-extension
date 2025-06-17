@@ -84,6 +84,19 @@ async def get_department_name(data: dict) -> str | None:
     return name.replace(" стационар ММЦ", "").replace(" ММЦ", "")
 
 
+async def get_department_code(department_name: str) -> str | None:
+    """
+    Определяет код отделения госпитализации
+    """
+    if not department_name:
+        return None
+    if department_name == "Дневной стационар":
+        return "36"
+    else:
+        # todo добавить маппер кодов отделений
+        return None
+
+
 async def get_medical_care_form(data: dict) -> str | None:
     """
     Определяет код формы оказания медицинской помощи, в зависимости от типа госпитализации

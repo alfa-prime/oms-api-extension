@@ -340,15 +340,19 @@ function injectionTargetFunction(dataMapToInsert) {
       fillPlainInput(doc, "input[name='Enp']",
         dataMapToInsert["input[name='Enp']"] || ""
       );
+      fillPlainInput(doc, "input[name='Gender']",
+        dataMapToInsert["input[name='Gender']"] || ""
+      );
       fillPlainInput(doc, "input[name='HospitalizationInfoNameDepartment']",
         dataMapToInsert["input[name='HospitalizationInfoNameDepartment']"] || ""
+      );
+      fillPlainInput(doc, "input[name='HospitalizationInfoOfficeCode']",
+        dataMapToInsert["input[name='HospitalizationInfoOfficeCode']"] || ""
       );
       fillPlainInput(doc, "input[name='CardNumber']",
         dataMapToInsert["input[name='CardNumber']"] || ""
       );
-      fillPlainInput(doc, "input[name='Gender']",
-        dataMapToInsert["input[name='Gender']"] || ""
-      );
+
 
       return { success: true };
     })

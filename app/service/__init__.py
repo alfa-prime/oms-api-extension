@@ -16,6 +16,7 @@ from .extension.helpers import (
     get_outcome_code,
     get_disease_type_code,
     get_department_name,
+    get_department_code
 )
 from .extension.started import fetch_started_data
 
@@ -29,6 +30,7 @@ __all__ = [
     "get_outcome_code",
     "get_disease_type_code",
     "get_department_name",
+    "get_department_code",
     "fetch_person_data",
     "fetch_movement_data",
     "fetch_referral_data",

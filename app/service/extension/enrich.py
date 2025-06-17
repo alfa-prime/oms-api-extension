@@ -20,6 +20,7 @@ from app.service.extension.helpers import (
     get_outcome_code,
     get_disease_type_code,
     get_department_name,
+    get_department_code,
 )
 
 
@@ -65,6 +66,8 @@ async def enrich_data(
     discharge_date = started_data.get("EvnPS_disDate")
 
     department_name = await get_department_name(started_data)
+    department_code = await get_department_code(department_name)
+    logger.warning(f"Отделение: {department_name},  код: {department_code}")
 
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
@@ -87,6 +90,7 @@ async def enrich_data(
         "input[name='HospitalizationInfoV014']": medical_care_form,
         "input[name='HospitalizationInfoSubdivision']": "Стационар",
         "input[name='HospitalizationInfoNameDepartment']": department_name,
+        "input[name='HospitalizationInfoOfficeCode']": department_code,
         "input[name='HospitalizationInfoV020']": bed_profile_code,
         "input[name='HospitalizationInfoDiagnosisMainDisease']": diag_code,
         "input[name='CardNumber']": card_number,

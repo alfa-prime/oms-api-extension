@@ -1,0 +1,31 @@
+services:
+  # Сервис Redis
+  redis:
+    image: redis:7-alpine
+    container_name: med_extractor_redis_prod
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data_prod:/data
+    restart: always
+    sysctls:
+      - net.core.somaxconn=1024
+
+  # Сервис FastAPI приложения
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: med_extractor_app_prod
+    depends_on:
+      - redis
+    env_file:
+      - .prod.env
+    ports:
+      - "8000:8000" # Пробрасываем порт 8000 контейнера на порт 8000 хоста
+    volumes:
+      - ./logs:/code/logs
+    restart: always
+
+# Определяем именованный volume для данных Redis
+volumes:
+  redis_data_prod:

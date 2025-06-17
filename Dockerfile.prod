@@ -4,22 +4,21 @@ FROM python:3.10 AS builder
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Создаем venv
 RUN python -m venv /opt/venv
-# Активируем его для последующих команд в этом слое
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Копируем только requirements.txt для кэширования
 WORKDIR /app
 COPY requirements.txt .
 
-# Устанавливаем зависимости в venv
+# --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+# Устанавливаем ВСЕ зависимости, включая gunicorn, одной командой
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Этап 2: Финальный образ
+
+# Этап 2: Финальный образ для продакшена
 FROM python:3.10-slim
 
-# Установка локалей (как и раньше)
+# Установка локалей (без изменений)
 RUN apt-get update && apt-get install -y --no-install-recommends locales \
  && sed -i '/ru_RU.UTF-8/s/^# //g' /etc/locale.gen \
  && locale-gen ru_RU.UTF-8 \
@@ -31,17 +30,14 @@ ENV LANG=ru_RU.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Копируем venv из builder'а
 COPY --from=builder /opt/venv /opt/venv
 
-# Устанавливаем рабочую директорию
 WORKDIR /app
-
-# Копируем код приложения
 COPY ./app /app/app
 
-# Указываем PATH на venv, чтобы система знала, где искать uvicorn
 ENV PATH="/opt/venv/bin:$PATH"
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# CMD остается таким же
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000"]

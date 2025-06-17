@@ -6,3 +6,4 @@ uvicorn==0.34.0
 loguru==0.7.3
 redis==5.0.7
 hiredis==3.1.0
+gunicorn
