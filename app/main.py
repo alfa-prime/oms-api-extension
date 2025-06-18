@@ -1,8 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core import (
     logger,
@@ -48,6 +47,32 @@ app = FastAPI(
     description="АПИ для сбора данных из ЕВМИАС и заполнения формы ГИС ОМС.",
     lifespan=lifespan
 )
+
+# Для локальной разработки, чтобы не мучаться с ID, можно разрешить все источники
+# ВАЖНО: В продакшене так делать НЕЛЬЗЯ из соображений безопасности.
+# origins = ["*"]
+
+origins = ["*"]
+
+# origins = [
+#     # Источник вашего расширения. ID 'kdoomom...' может меняться при переустановке.
+#     # Для разработки можно использовать wildcard или конкретный ID.
+#     "chrome-extension://kdoomomlibpmmcbaeaonghaelfgdbh",
+#     # Для продакшена, когда у расширения будет постоянный ID в магазине
+#     # "chrome-extension://ПОСТОЯННЫЙ_ID_ВАШЕГО_РАСШИРЕНИЯ",
+#     # Если вы иногда тестируете с локального файла, можно добавить:
+#     "null"
+# ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Разрешить все методы (GET, POST, и т.д.)
+    allow_headers=["*"], # Разрешить все заголовки
+)
+
+
 
 # Подключаем маршруты API
 app.include_router(api_router)

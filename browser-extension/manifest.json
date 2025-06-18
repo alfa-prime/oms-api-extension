@@ -6,6 +6,7 @@
   "permissions": ["scripting", "activeTab", "tabs"],
   "host_permissions": [
     "http://0.0.0.0:8000/*",
+    "http://192.168.0.118:8082/",
     "https://gisoms.ffoms.gov.ru/*"
   ],
   "background": {

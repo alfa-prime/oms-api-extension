@@ -29,8 +29,8 @@ async def enrich_data(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)]
 ) -> Dict[str, Any]:
-    logger.info(
-        f"Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
+    # logger.info(f"Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
+    logger.info(f"Запрос на обогащение получен.")
     if enrich_request.medical_orgs_list:
         logger.debug(f"Получено МО: {len(enrich_request.medical_orgs_list)} записей.")
     else:
@@ -67,7 +67,6 @@ async def enrich_data(
 
     department_name = await get_department_name(started_data)
     department_code = await get_department_code(department_name)
-    logger.warning(f"Отделение: {department_name},  код: {department_code}")
 
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
