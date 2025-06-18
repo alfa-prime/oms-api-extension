@@ -74,14 +74,28 @@ async def get_referred_organization(cookies, http_service, data: dict) -> str | 
 
 async def get_department_name(data: dict) -> str | None:
     """
-    Возвращает название отделения госпитализации
+    Возвращает нормализованное название отделения госпитализации
     """
-    name = data.get("LpuSection_Name", "").strip()
+    raw_name = data.get("LpuSection_Name", "")
+    name = raw_name.strip()
     if not name:
         return None
-    if name.startswith("ДС"):
+
+    if name.startswith("ДС") or "ДС при АПУ" in name:
         return "Дневной стационар"
-    return name.replace(" стационар ММЦ", "").replace(" ММЦ", "")
+
+    name = name.replace(" стационар ММЦ", "").replace(" ММЦ", "")
+
+    replacements = {
+        "Травматолого-ортопедическое отделение": "Травматология",
+        "Отделение реабилитации и восстановительного лечения": "Отделение реабилитации",
+        "Неврологическое отделение": "Неврология",
+        "Гастроэнтерологическое отделение": "Гастроэнтерология",
+
+        # можно добавлять ещё
+    }
+    logger.warning(f"название отделения: {replacements.get(name, name)}")
+    return replacements.get(name, name)
 
 
 async def get_department_code(department_name: str) -> str | None:

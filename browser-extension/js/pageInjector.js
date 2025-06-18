@@ -149,7 +149,7 @@ async function injectionTargetFunction(dataMapToInsert) {
         await waitForGridRowsSettled(doc, gridSettledOpts);
 
         const checker = doc.querySelector("tr.x-grid-row td.x-grid-cell-row-checker");
-        if (!checker) throw new Error("Чекбокс для выбора строки в справочнике не найден");
+        if (!checker) throw new Error(`Чекбокс для выбора строки в справочнике не найден (значение: ${value})`);
         ["mousedown","mouseup","click"].forEach(evt =>
           checker.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow }))
         );
@@ -174,53 +174,86 @@ async function injectionTargetFunction(dataMapToInsert) {
     }
     const doc = iframe.contentWindow.document;
 
-    // Оборачиваем всю логику в try/catch для централизованной обработки ошибок
     try {
-        // --- Последовательное заполнение полей из справочников ---
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationMedIndications']", column: "Код", value: dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"] });
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='VidMpV008']", column: "Код", value: dataMapToInsert["input[name='VidMpV008']"] });
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV006']", column: "Код", value: dataMapToInsert["input[name='HospitalizationInfoV006']"] });
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV014']", column: "Код", value: dataMapToInsert["input[name='HospitalizationInfoV014']"] });
+        let value; // Объявляем переменную для значений один раз
 
-        // Условное заполнение необязательных полей
-        let value; // Объявляем переменную для значений
+        // --- Последовательное и УСЛОВНОЕ заполнение полей из справочников ---
+
+        if (value = dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationMedIndications']", column: "Код", value });
+        }
+        if (value = dataMapToInsert["input[name='VidMpV008']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='VidMpV008']", column: "Код", value });
+        }
+        if (value = dataMapToInsert["input[name='HospitalizationInfoV006']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV006']", column: "Код", value });
+        }
+        if (value = dataMapToInsert["input[name='HospitalizationInfoV014']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV014']", column: "Код", value });
+        }
         if (value = dataMapToInsert["input[name='HospitalizationInfoSpecializedMedicalProfile']"]) {
             await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoSpecializedMedicalProfile']", column: "Код", value });
         }
-
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoSubdivision']", column: "Краткое наименование", value: dataMapToInsert["input[name='HospitalizationInfoSubdivision']"] });
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoDiagnosisMainDisease']", column: "Код МКБ", value: dataMapToInsert["input[name='HospitalizationInfoDiagnosisMainDisease']"] });
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV020']", column: "Код", value: dataMapToInsert["input[name='HospitalizationInfoV020']"] });
-
+        if (value = dataMapToInsert["input[name='HospitalizationInfoSubdivision']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoSubdivision']", column: "Краткое наименование", value });
+        }
+        if (value = dataMapToInsert["input[name='HospitalizationInfoDiagnosisMainDisease']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoDiagnosisMainDisease']", column: "Код МКБ", value });
+        }
+        if (value = dataMapToInsert["input[name='HospitalizationInfoV020']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV020']", column: "Код", value });
+        }
         if (value = dataMapToInsert["input[name='HospitalizationInfoC_ZABV027']"]) {
             await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoC_ZABV027']", column: "Код", value });
         }
-
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ResultV009']", column: "Код", value: dataMapToInsert["input[name='ResultV009']"] });
-        await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='IshodV012']", column: "Код", value: dataMapToInsert["input[name='IshodV012']"] });
-
+        if (value = dataMapToInsert["input[name='ResultV009']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ResultV009']", column: "Код", value });
+        }
+        if (value = dataMapToInsert["input[name='IshodV012']"]) {
+            await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='IshodV012']", column: "Код", value });
+        }
         if (value = dataMapToInsert["input[name='ReferralHospitalizationSendingDepartment']"]) {
             await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationSendingDepartment']", column: "Реестровый номер", value });
         }
 
-        // --- Заполнение простых полей и дат ---
-        fillDateInput({ doc, selector: "input[name='ReferralHospitalizationDateTicket']", value: dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"] });
-        fillDateInput({ doc, selector: "input[name='DateBirth']", value: dataMapToInsert["input[name='DateBirth']"] });
-        fillDateInput({ doc, selector: "input[name='TreatmentDateStart']", value: dataMapToInsert["input[name='TreatmentDateStart']"] });
-        fillDateInput({ doc, selector: "input[name='TreatmentDateEnd']", value: dataMapToInsert["input[name='TreatmentDateEnd']"] });
+        // --- Условное заполнение простых полей и дат ---
 
-        fillPlainInput(doc, "input[name='ReferralHospitalizationNumberTicket']", dataMapToInsert["input[name='ReferralHospitalizationNumberTicket']"]);
-        fillPlainInput(doc, "input[name='Enp']", dataMapToInsert["input[name='Enp']"]);
-        fillPlainInput(doc, "input[name='Gender']", dataMapToInsert["input[name='Gender']"]);
-        fillPlainInput(doc, "input[name='HospitalizationInfoNameDepartment']", dataMapToInsert["input[name='HospitalizationInfoNameDepartment']"]);
-        fillPlainInput(doc, "input[name='HospitalizationInfoOfficeCode']", dataMapToInsert["input[name='HospitalizationInfoOfficeCode']"]);
-        fillPlainInput(doc, "input[name='CardNumber']", dataMapToInsert["input[name='CardNumber']"]);
+        if (value = dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"]) {
+            fillDateInput({ doc, selector: "input[name='ReferralHospitalizationDateTicket']", value });
+        }
+        if (value = dataMapToInsert["input[name='DateBirth']"]) {
+            fillDateInput({ doc, selector: "input[name='DateBirth']", value });
+        }
+        if (value = dataMapToInsert["input[name='TreatmentDateStart']"]) {
+            fillDateInput({ doc, selector: "input[name='TreatmentDateStart']", value });
+        }
+        if (value = dataMapToInsert["input[name='TreatmentDateEnd']"]) {
+            fillDateInput({ doc, selector: "input[name='TreatmentDateEnd']", value });
+        }
+
+        if (value = dataMapToInsert["input[name='ReferralHospitalizationNumberTicket']"]) {
+            fillPlainInput(doc, "input[name='ReferralHospitalizationNumberTicket']", value);
+        }
+        if (value = dataMapToInsert["input[name='Enp']"]) {
+            fillPlainInput(doc, "input[name='Enp']", value);
+        }
+        if (value = dataMapToInsert["input[name='Gender']"]) {
+            fillPlainInput(doc, "input[name='Gender']", value);
+        }
+        if (value = dataMapToInsert["input[name='HospitalizationInfoNameDepartment']"]) {
+            fillPlainInput(doc, "input[name='HospitalizationInfoNameDepartment']", value);
+        }
+        if (value = dataMapToInsert["input[name='HospitalizationInfoOfficeCode']"]) {
+            fillPlainInput(doc, "input[name='HospitalizationInfoOfficeCode']", value);
+        }
+        if (value = dataMapToInsert["input[name='CardNumber']"]) {
+            fillPlainInput(doc, "input[name='CardNumber']", value);
+        }
 
         return { success: true };
 
     } catch (error) {
         console.error("[PAGE INJECTOR] Ошибка во время выполнения:", error);
-        // Возвращаем текст ошибки для отображения в popup
         return { success: false, error: error.message || String(error) };
     }
 }
