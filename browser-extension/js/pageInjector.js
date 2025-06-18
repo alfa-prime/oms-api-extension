@@ -243,6 +243,18 @@ function injectionTargetFunction(dataMapToInsert) {
       column: "Код",
       value: dataMapToInsert["input[name='HospitalizationInfoV014']"] || "",
     }))
+    .then(() => {
+      const v = dataMapToInsert["input[name='HospitalizationInfoSpecializedMedicalProfile']"];
+      return v
+        ? selectFromReferenceField({
+            doc,
+            iframeWindow: iframe.contentWindow,
+            fieldSelector: "input[name='HospitalizationInfoSpecializedMedicalProfile']",
+            column: "Код",
+            value: v,
+          })
+        : Promise.resolve();
+    })
     .then(() => selectFromReferenceField({
       doc,
       iframeWindow: iframe.contentWindow,
@@ -302,6 +314,7 @@ function injectionTargetFunction(dataMapToInsert) {
           })
         : Promise.resolve();
     })
+
     .then(() => {
       // ——— Заполняем даты ———
       if (dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"]) {
@@ -332,6 +345,7 @@ function injectionTargetFunction(dataMapToInsert) {
           value: dataMapToInsert["input[name='TreatmentDateEnd']"],
         });
       }
+
 
       // ——— Заполняем дополнительные plain-input’ы и закрываем попап ———
       fillPlainInput(doc, "input[name='ReferralHospitalizationNumberTicket']",

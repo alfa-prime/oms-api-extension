@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from app.core import logger, get_settings
-from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs
+from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs, department_codes
 from app.service import fetch_referred_org_by_id
 
 settings = get_settings()
@@ -89,12 +89,12 @@ async def get_department_code(department_name: str) -> str | None:
     Определяет код отделения госпитализации
     """
     if not department_name:
+        logger.warning("Не передано название отделения")
         return None
-    if department_name == "Дневной стационар":
-        return "36"
-    else:
-        # todo добавить маппер кодов отделений
-        return None
+    code = department_codes.get(department_name)
+    if code is None:
+        logger.warning(f"Не найден код для отделения: {department_name}")
+    return code
 
 
 async def get_medical_care_form(data: dict) -> str | None:

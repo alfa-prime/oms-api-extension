@@ -71,6 +71,8 @@ async def enrich_data(
 
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
+    # todo: добавить запрос для получения профиля медицинского лечения
+    medical_care_profile = None
 
     diag_code = movement_data.get("Diag_Code")
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
@@ -88,6 +90,7 @@ async def enrich_data(
         "input[name='VidMpV008']": "31",
         "input[name='HospitalizationInfoV006']": medical_care_conditions,
         "input[name='HospitalizationInfoV014']": medical_care_form,
+        "input[name='HospitalizationInfoSpecializedMedicalProfile']": medical_care_profile,
         "input[name='HospitalizationInfoSubdivision']": "Стационар",
         "input[name='HospitalizationInfoNameDepartment']": department_name,
         "input[name='HospitalizationInfoOfficeCode']": department_code,
