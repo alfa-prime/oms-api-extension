@@ -139,23 +139,24 @@ async def get_medical_care_profile(data: dict) -> str | None:
     """
     Определяет код профиля оказания медицинской помощи
     """
-    raw_medical_care_profile_name = data.get('LpuSectionProfile_Name')
-
-    if raw_medical_care_profile_name is None:
-        logger.warning(f"Не найден профиль медицинской помощи в данных. {raw_medical_care_profile_name}")
+    raw_name = data.get('LpuSectionProfile_Name')
+    if not raw_name:
+        logger.warning("Профиль медицинской помощи не указан.")
         return None
 
-    profile_name = str(raw_medical_care_profile_name).lower().strip()
-    profile_code = medical_care_profile.get(profile_name).get("Code")
+    profile_key = str(raw_name).lower().strip()
+    profile = medical_care_profile.get(profile_key)
+    if not profile:
+        logger.warning(f"Профиль '{raw_name}' не найден в справочнике.")
+        return None
 
-    if profile_code is None:
-        logger.warning(
-            f"Код для профиля медицинской помощи '{raw_medical_care_profile_name}' не найден в справочнике 'medical_care_profile'."
-        )
-    else:
-        logger.warning(f"Определен код профиля мед. помощи: '{raw_medical_care_profile_name}' -> '{profile_code}'")
+    code = profile.get("Code")
+    if not code:
+        logger.warning(f"У профиля '{raw_name}' нет кода в справочнике.")
+        return None
 
-    return profile_code
+    logger.debug(f"Определен код профиля: '{raw_name}' -> '{code}'")
+    return code
 
 
 async def get_bed_profile_code(bed_profile_name: str) -> str | None:
