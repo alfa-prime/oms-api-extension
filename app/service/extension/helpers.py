@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from app.core import logger, get_settings
-from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs, department_codes
+from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs, department_codes, medical_care_profile
 from app.service import fetch_referred_org_by_id
 
 settings = get_settings()
@@ -133,6 +133,29 @@ async def get_medical_care_form(data: dict) -> str | None:
             return emergency_hospitalization_code
         case _:
             return None
+
+
+async def get_medical_care_profile(data: dict) -> str | None:
+    """
+    Определяет код профиля оказания медицинской помощи
+    """
+    raw_medical_care_profile_name = data.get('LpuSectionProfile_Name')
+
+    if raw_medical_care_profile_name is None:
+        logger.warning(f"Не найден профиль медицинской помощи в данных. {raw_medical_care_profile_name}")
+        return None
+
+    profile_name = str(raw_medical_care_profile_name).lower().strip()
+    profile_code = medical_care_profile.get(profile_name).get("Code")
+
+    if profile_code is None:
+        logger.warning(
+            f"Код для профиля медицинской помощи '{raw_medical_care_profile_name}' не найден в справочнике 'medical_care_profile'."
+        )
+    else:
+        logger.warning(f"Определен код профиля мед. помощи: '{raw_medical_care_profile_name}' -> '{profile_code}'")
+
+    return profile_code
 
 
 async def get_bed_profile_code(bed_profile_name: str) -> str | None:

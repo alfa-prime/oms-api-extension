@@ -21,6 +21,7 @@ from app.service.extension.helpers import (
     get_disease_type_code,
     get_department_name,
     get_department_code,
+    get_medical_care_profile,
 )
 
 
@@ -70,8 +71,7 @@ async def enrich_data(
 
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
-    # todo: добавить запрос для получения профиля медицинского лечения
-    medical_care_profile = None
+    medical_care_profile = await get_medical_care_profile(movement_data)
 
     diag_code = movement_data.get("Diag_Code")
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]

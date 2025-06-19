@@ -133,6 +133,36 @@ async def fetch_referred_org_by_id(
         headers=headers,
         params=params,
         data=data,
+        raise_for_status=True,
     )
 
     return response.get("json", {})[0]
+
+
+@log_and_catch(debug=settings.DEBUG_HTTP)
+async def fetch_medical_service_data(
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        event_id: str
+):
+    """
+    Возвращает список услуг оказанных пациенту
+    """
+    url = settings.BASE_URL
+    headers = HEADERS
+    params = {"c": "EvnUsluga", "m": "loadEvnUslugaGrid"}
+    data = {
+        "pid": event_id,
+        "parent": "EvnPS"
+    }
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+        raise_for_status=True,
+    )
+
+    return response.get("json", {})

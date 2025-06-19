@@ -9,7 +9,8 @@ from app.service import (
     fetch_person_data,
     fetch_movement_data,
     fetch_referral_data,
-    fetch_referred_org_by_id
+    fetch_referred_org_by_id,
+    fetch_medical_service_data
 )
 
 settings = get_settings()
@@ -252,3 +253,15 @@ async def get_event_by_id(
         org_id: str = Path(..., description="id организации")
 ):
     return await fetch_referred_org_by_id(cookies=cookies, http_service=http_service, org_id=org_id)
+
+
+@router.get(
+    path="/services/{event_id}",
+    summary="Получение списка услуг пациента по id госпитализации"
+)
+async def get_medical_services(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Path(..., description="id организации")
+):
+    return await fetch_medical_service_data(cookies=cookies, http_service=http_service, event_id=event_id)
