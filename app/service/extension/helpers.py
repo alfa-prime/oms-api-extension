@@ -81,7 +81,7 @@ async def get_department_name(data: dict) -> str | None:
     if not name:
         return None
 
-    if name.startswith("ДС") or "ДС при АПУ" in name:
+    if name.startswith("ДС"):
         return "Дневной стационар"
 
     name = name.replace(" стационар ММЦ", "").replace(" ММЦ", "")
@@ -91,8 +91,7 @@ async def get_department_name(data: dict) -> str | None:
         "Отделение реабилитации и восстановительного лечения": "Отделение реабилитации",
         "Неврологическое отделение": "Неврология",
         "Гастроэнтерологическое отделение": "Гастроэнтерология",
-
-        # можно добавлять ещё
+        "Терапевтическое отделение": "Отделение терапии",
     }
     logger.warning(f"название отделения: {replacements.get(name, name)}")
     return replacements.get(name, name)
