@@ -1,9 +1,8 @@
 // browser-extension/js/searchLogic.js
 
 import * as ui from "./ui.js";
-import * as api from "./apiService.js"; // <--- Используем обновленный apiService
+import * as api from "./apiService.js";
 import { injectData } from "./pageInjector.js";
-import { getStoredListMoData } from "./main.js";
 
 const resultsList = document.getElementById("results");
 
@@ -79,16 +78,14 @@ export async function searchPatient() {
         ui.clearUserMessages();
 
         try {
-          const listMoDataFromStore = getStoredListMoData();
           const enrichmentPayload = {
             started_data: item,
-            medical_orgs_list: listMoDataFromStore,
           };
 
           // Используем функцию из apiService
           const enrichedDataForForm =
             await api.fetchEnrichedDataForPatient(enrichmentPayload);
-          console.log("[SearchLogic] Обогащенные данные:", enrichedDataForForm); // Лог есть в apiService
+          console.log("[SearchLogic] Обогащенные данные:", enrichedDataForForm);
 
           injectData(enrichedDataForForm, (injectionResults) => {
             console.log(

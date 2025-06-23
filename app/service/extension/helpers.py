@@ -93,7 +93,7 @@ async def get_department_name(data: dict) -> str | None:
         "Гастроэнтерологическое отделение": "Гастроэнтерология",
         "Терапевтическое отделение": "Отделение терапии",
     }
-    logger.warning(f"название отделения: {replacements.get(name, name)}")
+    logger.debug(f"название отделения: {replacements.get(name, name)}")
     return replacements.get(name, name)
 
 

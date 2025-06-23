@@ -30,12 +30,7 @@ async def enrich_data(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)]
 ) -> Dict[str, Any]:
-    # logger.info(f"Запрос на обогащение получен. original_evmias_data: {enrich_request.started_data}")
     logger.info(f"Запрос на обогащение получен.")
-    if enrich_request.medical_orgs_list:
-        logger.debug(f"Получено МО: {len(enrich_request.medical_orgs_list)} записей.")
-    else:
-        logger.debug("Список МО не передан.")
 
     # Извлекаем некоторые данные из original_evmias_data для примера
     started_data = enrich_request.started_data

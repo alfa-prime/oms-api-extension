@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 from pydantic import BaseModel, Field, constr, model_validator
 
 
 class ExtensionStartedData(BaseModel):
     """Модель для стартовых данных"""
-    last_name: str = Field(..., description="Фамилия пациента",  examples=["Бобов"])
+    last_name: str = Field(..., description="Фамилия пациента", examples=["Бобов"])
     first_name: Optional[str] = Field(None, description="Имя пациента", examples=["Игорь"])
     middle_name: Optional[str] = Field(None, description="Отчество пациента", examples=["Константинович"])
     birthday: Optional[constr(pattern=r"\d{2}\.\d{2}\.\d{4}")] = Field(
@@ -14,7 +14,7 @@ class ExtensionStartedData(BaseModel):
         description="Дата рождения в формате DD.MM.YYYY",
         examples=["04.02.1961"]
     )
-    start_date: Optional[str] = Field(None, description="Дата начала периода в формате YYYY-MM-DD",  examples=[""])
+    start_date: Optional[str] = Field(None, description="Дата начала периода в формате YYYY-MM-DD", examples=[""])
     end_date: Optional[str] = Field(None, description="Дата окончания периода в формате YYYY-MM-DD", examples=[""])
     dis_date_range: Optional[str] = Field(None, description="Диапазон дат госпитализации", examples=[""])
 
@@ -39,28 +39,6 @@ class ExtensionStartedData(BaseModel):
         return data
 
 
-class MedicalOrgsDataItem(BaseModel):
-    Code: Optional[str] = None
-    CodeMo: Optional[str] = None
-    FullName: Optional[str] = None
-    Id: Optional[int] = None # ID похоже на число
-    Inn: Optional[str] = None
-    Kpp: Optional[str] = None
-    Name: Optional[str] = None
-    Ogrn: Optional[str] = None
-    RegistryCode: Optional[str] = None
-    ShortName: Optional[str] = None
-    SubjectName: Optional[str] = None
-
-    class Config:
-        extra = "ignore" # Игнорировать лишние поля в данных
-
-
 class EnrichmentRequestData(BaseModel):
     """Модель данных для получения данных от фронтенда"""
     started_data: Dict[str, Any] = Field(..., description="Оригинальные данные о событии/пациенте из ЕВМИАС")
-    medical_orgs_list: Optional[List[MedicalOrgsDataItem]] = Field(..., description="Справочник медицинских организаций")
-
-
-
-

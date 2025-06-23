@@ -1,14 +1,13 @@
 // browser-extension/js/main.js
 import { initForm } from "./form.js";
-import { debounce } from "./utils.js"; // debounce остается здесь
-import { searchPatient } from "./searchLogic.js"; // Пока оставляем старый search.js
-import { showUserError, showUserMessage } from "./ui.js"; // <--- ИЗМЕНЕНО: импорт из ui.js
+import { debounce } from "./utils.js";
+import { searchPatient } from "./searchLogic.js";
+import { showUserError } from "./ui.js";
 
-let storedListMoData = null;
 
 export function setupSearchHandler() {
   const debouncedSearch = debounce(searchPatient, 500);
-  const searchButtonEl = document.getElementById("searchBtn"); // Можно получить ссылку здесь или в ui.js
+  const searchButtonEl = document.getElementById("searchBtn");
   if (searchButtonEl) {
     searchButtonEl.addEventListener("click", debouncedSearch);
   }
@@ -22,51 +21,32 @@ export function setupSearchHandler() {
   });
 }
 
-export function getStoredListMoData() {
-  return storedListMoData;
-}
-
 window.addEventListener("DOMContentLoaded", () => {
   initForm();
   setupSearchHandler();
 
+  // Оставляем проверку, чтобы убедиться, что расширение запущено на правильном сайте
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs || !tabs.length) {
-      showUserError("Не удалось получить доступ к активной вкладке."); // <--- ИЗМЕНЕНО
+      showUserError("Не удалось получить доступ к активной вкладке.");
       return;
     }
-    const tabId = tabs[0].id;
 
+    // Эта проверка очень важна. Мы ее оставляем!
     if (!tabs[0].url || !tabs[0].url.startsWith("https://gisoms.ffoms.gov.ru")) {
-      console.warn("Popup открыт не на странице ГИС ОМС. Список МО не будет запрошен.");
-      showUserError("Расширение предназначено для gisoms.ffoms.gov.ru"); // <--- ИЗМЕНЕНО
+      console.warn("Popup открыт не на странице ГИС ОМС.");
+      showUserError("Расширение предназначено для gisoms.ffoms.gov.ru");
+      // Также можно заблокировать кнопку поиска, чтобы предотвратить бесполезные запросы
+      const searchButton = document.getElementById('searchBtn');
+      if (searchButton) {
+          searchButton.disabled = true;
+      }
       return;
     }
 
-//    chrome.tabs.sendMessage(tabId, { action: "FETCH_LIST_MO" }, (response) => {
-//      if (chrome.runtime.lastError) {
-//          console.error("Ошибка sendMessage для FETCH_LIST_MO:", chrome.runtime.lastError.message);
-//          showUserError("Ошибка связи со страницей: " + chrome.runtime.lastError.message); // <--- ИЗМЕНЕНО
-//          return;
-//      }
-//      if (!response) {
-//        showUserError("Нет ответа от content.js для списка МО."); // <--- ИЗМЕНЕНО
-//        return;
-//      }
-//      if (!response.success) {
-//        showUserError(`Не удалось получить список МО: ${response.status || "неизвестная ошибка"}`); // <--- ИЗМЕНЕНО
-//        return;
-//      }
-//
-//      console.log("✅ МО получены (через content.js):", response.data);
-//      if (response.data && response.data.data && Array.isArray(response.data.data)) {
-//          storedListMoData = response.data.data;
-//          showUserMessage("Справочник МО успешно загружен (" + storedListMoData.length + " записей)", "info"); // <--- ИЗМЕНЕНО
-//      } else {
-//          storedListMoData = null;
-//          showUserError("Справочник МО: неверный формат данных."); // <--- ИЗМЕНЕНО
-//          console.error("Ожидаемая структура response.data.data не найдена:", response.data);
-//      }
-//    });
+    // Вся логика sendMessage, связанная с FETCH_LIST_MO, удалена.
+    // Теперь здесь просто ничего не происходит, и это нормально.
+    // Код просто убедился, что мы на верном сайте, и продолжает работу.
+    console.log("✅ Расширение запущено на правильной странице ГИС ОМС.");
   });
 });
