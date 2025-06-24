@@ -1,4 +1,5 @@
-from typing import Annotated, Dict, Any
+import asyncio
+from typing import Annotated, Dict, Any, Awaitable
 
 from fastapi import Depends
 
@@ -26,6 +27,32 @@ from app.service.extension.helpers import (
 )
 
 
+async def _safe_gather(*tasks: Awaitable[Any]) -> list[Any | None]:
+    """
+    Безопасно выполняет несколько асинхронных задач параллельно.
+
+    Каждая задача (coroutine) выполняется через asyncio.gather. Если задача завершилась с исключением,
+    оно логируется, а в итоговый список вместо результата добавляется None.
+
+    Это позволяет продолжить выполнение даже если одна или несколько задач упали.
+
+    :param tasks: Набор асинхронных функций (без await).
+    :return: Список результатов — либо результат задачи, либо None, если она упала.
+    """
+    # Выполняем все задачи параллельно, исключения не прерывают выполнение
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    clean_results = []
+
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            logger.exception(f"Задача #{i + 1} завершилась с ошибкой: {type(result).__name__} — {result}")
+            clean_results.append(None)
+        else:
+            clean_results.append(result)
+
+    return clean_results
+
+
 async def enrich_data(
         enrich_request: EnrichmentRequestData,
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
@@ -39,9 +66,13 @@ async def enrich_data(
     event_id = started_data.get("EvnPS_id")
     logger.debug(f"Извлечены данные: person_id={person_id}, event_id={event_id}")
 
-    person_dara = await fetch_person_data(cookies, http_service, person_id)
-    movement_data = await fetch_movement_data(cookies, http_service, event_id)
-    referred_data = await fetch_referral_data(cookies, http_service, event_id)
+    results = await _safe_gather(
+        fetch_person_data(cookies, http_service, person_id),
+        fetch_movement_data(cookies, http_service, event_id),
+        fetch_referral_data(cookies, http_service, event_id),
+        fetch_medical_service_data(cookies, http_service, event_id)
+    )
+    person_data, movement_data, referred_data, medical_service_data = results
 
     referred_organization = await get_referred_organization(cookies, http_service, referred_data)
 
@@ -54,9 +85,9 @@ async def enrich_data(
     bed_profile_name = movement_data.get("LpuSectionBedProfile_Name", "")
     bed_profile_code = await get_bed_profile_code(bed_profile_name)
 
-    polis_number = person_dara.get("Person_EdNum", "")
+    polis_number = person_data.get("Person_EdNum", "")
     person_birthday = started_data.get("Person_Birthday", "")
-    gender = person_dara.get("Sex_Name", "")
+    gender = person_data.get("Sex_Name", "")
 
     admission_date = started_data.get("EvnPS_setDate")
     direction_date = await get_direction_date(admission_date)
@@ -72,9 +103,6 @@ async def enrich_data(
     diag_code = movement_data.get("Diag_Code")
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
     treatment_outcome_code = movement_data.get("LeaveType_Code")
-
-    # получаем список операций если они есть
-    medical_service_data = await fetch_medical_service_data(cookies, http_service, event_id)
 
     enriched_data = {
         "input[name='ReferralHospitalizationNumberTicket']": "б/н",
