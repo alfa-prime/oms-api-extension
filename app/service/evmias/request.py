@@ -1,4 +1,4 @@
-from app.core import get_settings, HTTPXClient
+from app.core import get_settings, HTTPXClient, logger
 from app.core.decorators import log_and_catch
 
 settings = get_settings()
@@ -139,14 +139,26 @@ async def fetch_referred_org_by_id(
     return response.get("json", {})[0]
 
 
+def _sanitize_medical_service_entry(entry: dict) -> dict[str, str]:
+    """
+     Извлекает ключевые данные из записи об услуге и возвращает
+    их в виде структурированного словаря.
+    """
+    return {
+        "code": entry.get("Usluga_Code", "").strip(),
+        "name": entry.get("Usluga_Name", "").strip(),
+    } if entry.get("Usluga_Code") else {}
+
+
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_medical_service_data(
         cookies: dict[str, str],
         http_service: HTTPXClient,
         event_id: str
-):
+) -> list[dict[str, str]]:
     """
-    Возвращает список услуг оказанных пациенту
+    Находит и возвращает список операций среди всех услуг,
+    оказанных пациенту в рамках госпитализации.
     """
     url = settings.BASE_URL
     headers = HEADERS
@@ -165,4 +177,23 @@ async def fetch_medical_service_data(
         raise_for_status=True,
     )
 
-    return response.get("json", {})
+    services_list = response.get("json", [])
+    operations_found = []
+
+    if not isinstance(services_list, list):
+        logger.warning(f"event_id: {event_id}, services_list не список: {type(services_list)}")
+        return []
+
+    for entry in services_list:
+        if isinstance(entry, dict) and "EvnUslugaOper" in (entry.get("EvnClass_SysNick") or ""):
+            sanitized_entry = _sanitize_medical_service_entry(entry)
+            if sanitized_entry:
+                logger.debug(f"Операция: {sanitized_entry['code']} — {sanitized_entry['name']}")
+                operations_found.append(sanitized_entry)
+
+    if operations_found:
+        logger.debug(f"event_id: {event_id}, найдено операций: {len(operations_found)}")
+    else:
+        logger.warning(f"event_id: {event_id}, не найдено операции")
+
+    return operations_found

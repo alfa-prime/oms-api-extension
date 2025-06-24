@@ -10,6 +10,7 @@ from app.service.evmias.request import (
     fetch_movement_data,
     fetch_referral_data,
     fetch_disease_data,
+    fetch_medical_service_data,
 )
 from app.service.extension.helpers import (
     get_referred_organization,
@@ -72,6 +73,9 @@ async def enrich_data(
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
     treatment_outcome_code = movement_data.get("LeaveType_Code")
 
+    # получаем список операций если они есть
+    medical_service_data = await fetch_medical_service_data(cookies, http_service, event_id)
+
     enriched_data = {
         "input[name='ReferralHospitalizationNumberTicket']": "б/н",
         "input[name='ReferralHospitalizationDateTicket']": direction_date,
@@ -94,7 +98,8 @@ async def enrich_data(
         "input[name='ResultV009']": treatment_outcome_code,
         "input[name='IshodV012']": outcome_code,
         "input[name='HospitalizationInfoC_ZABV027']": disease_type_code,
-        "input[name='ReferralHospitalizationSendingDepartment']": referred_organization
+        "input[name='ReferralHospitalizationSendingDepartment']": referred_organization,
+        "medical_service_data": medical_service_data,
     }
 
     return enriched_data
