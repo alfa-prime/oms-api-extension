@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     LPU_ID: str
     KSG_YEAR: str
     SEARCH_PERIOD_START_DATE: str
+    SEARCH_PAY_TYPE_ID: str
+    SEARCH_LPU_BUILDING_CID: str
 
     # === Redis Configuration ===
     REDIS_HOST: str
