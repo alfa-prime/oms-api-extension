@@ -23,7 +23,7 @@ async def fetch_person_data(
         cookies: dict[str, str],
         http_service: HTTPXClient,
         person_id: str
-)-> dict:
+) -> dict:
     """
     Загружает основные данные о пациенте по его ID.
 
@@ -46,7 +46,7 @@ async def fetch_movement_data(
         cookies: dict[str, str],
         http_service: HTTPXClient,
         event_id: str
-)-> dict:
+) -> dict:
     """
     Загружает данные о движении пациента в рамках случая госпитализации.
 
@@ -67,7 +67,7 @@ async def fetch_referral_data(
         cookies: dict[str, str],
         http_service: HTTPXClient,
         event_id: str
-)-> dict:
+) -> dict:
     """
     Загружает данные о направлении на госпитализацию.
 
@@ -90,14 +90,16 @@ async def fetch_referral_data(
 async def fetch_disease_data(
         cookies: dict[str, str],
         http_service: HTTPXClient,
-        event_section_id: str
-)-> dict:
+        data: dict,
+) -> dict:
     """
     Загружает данные о заболевании из раздела случая госпитализации.
 
     Returns:
         Словарь с данными о заболевании или пустой словарь в случае ошибки.
     """
+    event_section_id = data.get("EvnSection_id", "")
+
     params = {"c": "EvnSection", "m": "loadEvnSectionEditForm"}
     data = {
         "EvnSection_id": event_section_id,
@@ -119,7 +121,7 @@ async def fetch_referred_org_by_id(
         cookies: dict[str, str],
         http_service: HTTPXClient,
         org_id: str
-)-> dict:
+) -> dict:
     """
    Получает информацию о направившей организации по её ID.
 

@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     REDIS_COOKIES_KEY: str
     REDIS_COOKIES_TTL: int  # TTL - это число (секунды)
 
-    # === Logging & Debugging ===
+    # === Настройки безопасности и отладки ===
+    CORS_ALLOW_REGEX: str = r"^chrome-extension://[a-z]{32}$"
     LOGS_LEVEL: str
     DEBUG_HTTP: bool = False
     DEBUG_ROUTE: bool = False

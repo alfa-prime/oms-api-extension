@@ -60,7 +60,6 @@ async def enrich_data(
 ) -> Dict[str, Any]:
     logger.info(f"Запрос на обогащение получен.")
 
-    # Извлекаем некоторые данные из original_evmias_data для примера
     started_data = enrich_request.started_data
     person_id = started_data.get("Person_id")
     event_id = started_data.get("EvnPS_id")
@@ -74,11 +73,14 @@ async def enrich_data(
     )
     person_data, movement_data, referred_data, medical_service_data = results
 
-    referred_organization = await get_referred_organization(cookies, http_service, referred_data)
+    person_data = person_data or {}
+    movement_data = movement_data or {}
+    referred_data = referred_data or {}
+    medical_service_data = medical_service_data or []
 
-    # получаем EvnSection_id для запроса получения id исхода заболевания (outcome_code)
-    event_section_id = movement_data.get("EvnSection_id", "")
-    disease_data = await fetch_disease_data(cookies, http_service, event_section_id)
+    referred_organization = await get_referred_organization(cookies, http_service, referred_data)
+    disease_data = await fetch_disease_data(cookies, http_service, movement_data)
+
     outcome_code = await get_outcome_code(disease_data)
     disease_type_code = await get_disease_type_code(disease_data)
 

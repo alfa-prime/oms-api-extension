@@ -4,14 +4,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core import (
+    get_settings,
     logger,
     init_httpx_client,
     shutdown_httpx_client,
     init_redis_client,
     shutdown_redis_client,
-    HTTPXClient
 )
 from app.route import api_router
+
+settings = get_settings()
 
 
 @asynccontextmanager
@@ -23,7 +25,6 @@ async def lifespan(app: FastAPI):
     logger.info("Запуск приложения...")
     await init_httpx_client(app)
     await init_redis_client(app)
-    app.state.http_client_service = HTTPXClient(client=app.state.http_client)
     logger.info("Инициализация завершена.")
 
     # --- Приложение работает ---
@@ -31,14 +32,14 @@ async def lifespan(app: FastAPI):
 
     # --- Shutdown Phase ---
     logger.info("Завершение работы приложения...")
-    await shutdown_redis_client(app)  # Закрываем Redis перед HTTPX на всякий случай
+    await shutdown_redis_client(app)
     await shutdown_httpx_client(app)
     logger.info("Ресурсы освобождены.")
 
 
 tags_metadata = [
     {"name": "Расширение", "description": "запросы из расширения к ЕВМИАС для ГИС ОМС"},
-    # {"name": "ЕВМИАС", "description": "Всяческие запросы к ЕВМИАС"},
+    {"name": "ЕВМИАС", "description": "Тестовые запросы к ЕВМИАС"},
 ]
 
 app = FastAPI(
@@ -48,31 +49,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Для локальной разработки, чтобы не мучаться с ID, можно разрешить все источники
-# ВАЖНО: В продакшене так делать НЕЛЬЗЯ из соображений безопасности.
-# origins = ["*"]
-
-origins = ["*"]
-
-# origins = [
-#     # Источник вашего расширения. ID 'kdoomom...' может меняться при переустановке.
-#     # Для разработки можно использовать wildcard или конкретный ID.
-#     "chrome-extension://kdoomomlibpmmcbaeaonghaelfgdbh",
-#     # Для продакшена, когда у расширения будет постоянный ID в магазине
-#     # "chrome-extension://ПОСТОЯННЫЙ_ID_ВАШЕГО_РАСШИРЕНИЯ",
-#     # Если вы иногда тестируете с локального файла, можно добавить:
-#     "null"
-# ]
-
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
+    CORSMiddleware,  # noqa
+    allow_origin_regex=settings.CORS_ALLOW_REGEX,
     allow_credentials=True,
-    allow_methods=["*"], # Разрешить все методы (GET, POST, и т.д.)
-    allow_headers=["*"], # Разрешить все заголовки
+    allow_methods=["*"],  # Разрешить все методы (GET, POST, и т.д.)
+    allow_headers=["*"],  # Разрешить все заголовки
 )
 
-
-
-# Подключаем маршруты API
 app.include_router(api_router)

@@ -1,3 +1,9 @@
+"""
+Отладочные роуты для ЕВМИАС
+тестируем запросы на получение различных данных из ЕВМИАС
+"""
+
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Body
@@ -109,8 +115,32 @@ async def get_referred(
     return response
 
 
+@router.get(
+    path="/referred_org/{org_id}",
+    summary="Получение направившей организации по id"
+)
+async def get_referred_org_by_id(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        org_id: str = Path(..., description="id организации")
+):
+    return await fetch_referred_org_by_id(cookies=cookies, http_service=http_service, org_id=org_id)
+
+
+@router.get(
+    path="/services/{event_id}",
+    summary="Получение списка услуг пациента по id госпитализации"
+)
+async def get_medical_services(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Path(..., description="id организации")
+):
+    return await fetch_medical_service_data(cookies=cookies, http_service=http_service, event_id=event_id)
+
+
 @router.post("/evn_section_grid")
-async def _get_polis(
+async def evn_section_grid(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
         event_id: str = Body(..., description="ID госпитализации"),
@@ -138,7 +168,7 @@ async def _get_polis(
 
 
 @router.post("/person_panel")
-async def _get_polis(
+async def person_panel(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
         person_id: str = Body(..., description="ID пациента"),
@@ -217,7 +247,7 @@ async def result_disease(
     path="/event_section/{event_id}",
     summary="Получение информации по id госпитализации"
 )
-async def get_event_by_id(
+async def get_event_section_by_id(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
         event_id: str = Path(..., description="id события")
@@ -241,27 +271,3 @@ async def get_event_by_id(
     )
 
     return response.get("json", {})
-
-
-@router.get(
-    path="/org/{org_id}",
-    summary="Получение направившей организации по id"
-)
-async def get_event_by_id(
-        cookies: Annotated[dict[str, str], Depends(set_cookies)],
-        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
-        org_id: str = Path(..., description="id организации")
-):
-    return await fetch_referred_org_by_id(cookies=cookies, http_service=http_service, org_id=org_id)
-
-
-@router.get(
-    path="/services/{event_id}",
-    summary="Получение списка услуг пациента по id госпитализации"
-)
-async def get_medical_services(
-        cookies: Annotated[dict[str, str], Depends(set_cookies)],
-        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
-        event_id: str = Path(..., description="id организации")
-):
-    return await fetch_medical_service_data(cookies=cookies, http_service=http_service, event_id=event_id)
