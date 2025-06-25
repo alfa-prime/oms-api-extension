@@ -3,7 +3,7 @@
   "name": "ЕВМИАС -> ОМС",
   "version": "1.0",
   "description": "Находит данные по ФИО и вставляет их в форму.",
-  "permissions": ["scripting", "activeTab", "tabs", "windows", "storage"],
+  "permissions": ["scripting", "activeTab", "tabs", "windows"],
   "host_permissions": [
     "http://0.0.0.0:8000/*",
     "http://192.168.0.118:8082/",

@@ -75,7 +75,6 @@ export async function searchPatient() {
           };
           const enrichedDataForForm =
             await api.fetchEnrichedDataForPatient(enrichmentPayload);
-          console.log("[SearchLogic] Обогащенные данные:", enrichedDataForForm);
 
           injectData(enrichedDataForForm, (injectionResults) => {
             ui.hideLoading();
@@ -90,48 +89,25 @@ export async function searchPatient() {
 
             const operations = enrichedDataForForm.medical_service_data;
 
+            // Если есть операции или вставка была частичной...
             if ((operations && operations.length > 0) || !result.allElementsFound) {
-                // Если есть операции ИЛИ вставка была частичной, ОТКРЫВАЕМ НОВОЕ ОКНО
-                let title = "Форма заполнена. Найдены операции:";
-                if (operations && operations.length > 0) {
-                    title = "Данные вставлены. Найдены операции:";
-                } else {
-                    title = "Данные успешно вставлены";
+                let title = "Дополнительные сведения:";
+                if (!result.allElementsFound && (!operations || operations.length === 0)) {
+                    title = "Данные вставлены. Проверьте результат.";
                 }
 
-                const url = new URL(chrome.runtime.getURL('final-view.html'));
-                url.searchParams.set('title', encodeURIComponent(title));
-                if (operations && operations.length > 0) {
-                   url.searchParams.set('operations', encodeURIComponent(JSON.stringify(operations)));
-                }
-
-                // Расчет позиции для правого нижнего угла
-                const width = 340;
-                const height = 400;
-                const rightOffset = 20; // Отступ от правого края в пикселях
-                const bottomOffset = 20; // Отступ от нижнего края в пикселях
-                const left = Math.round(screen.availWidth - width - rightOffset);
-                const top = Math.round(screen.availHeight - height - bottomOffset);
-
-                // Отправляем сообщение в background script для создания окна
+                // ...отправляем сообщение в content script для отображения блока
                 chrome.runtime.sendMessage({
-                    action: 'createStickyWindow',
-                    options: {
-                        url: url.href,
-                        width,
-                        height,
-                        left,
-                        top
+                    action: 'showFinalResultInPage',
+                    data: {
+                        title,
+                        operations,
                     }
                 });
-
-                // И сразу закрываем текущий popup
-                window.close();
-
-            } else {
-                // Если операций нет и вставка была ПОЛНОЙ, ЗАКРЫВАЕМ старый popup
-                window.close();
             }
+
+            // В любом случае успешной вставки закрываем popup
+            window.close();
           });
 
         } catch (err) {
