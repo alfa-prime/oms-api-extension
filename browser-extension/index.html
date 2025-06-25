@@ -3,33 +3,20 @@
     <head>
         <meta charset="UTF-8" />
         <title>Поиск пациента</title>
-
-        <!-- Подключение внешнего CSS-файла -->
         <link rel="stylesheet" href="css/style.css" />
-
-        <!-- Подключение логики (JS) -->
         <script type="module" src="js/main.js"></script>
-        <!-- <script src="js/fetch_orgs.js" defer></script>
-        <script src="js/scripts.js" defer></script> -->
     </head>
     <body>
-        <!-- Блок: ФИО -->
-        <h3>ФИО</h3>
-        <input id="lastname" placeholder="Фамилия" />
-<!--        <input id="firstname" placeholder="Имя" />-->
-<!--        <input id="middlename" placeholder="Отчество" />-->
-<!--        <input id="birthday" placeholder="Дата рождения (дд.мм.гггг)" />-->
-
-        <!-- Блок: Период -->
-        <h3>Период (исход из отделения)</h3>
-        <input id="startDate" type="date" placeholder="Дата начала" />
-        <input id="endDate" type="date" placeholder="Дата окончания" />
-
-        <!-- Кнопка запуска поиска -->
-        <button id="searchBtn">Искать</button>
-
-        <!-- Список результатов поиска -->
-        <ul id="results"></ul>
+        <!-- Блок поиска (основной) -->
+        <div id="search-block">
+            <h3>ФИО</h3>
+            <input id="lastname" placeholder="Фамилия" />
+            <h3>Период (исход из отделения)</h3>
+            <input id="startDate" type="date" placeholder="Дата начала" />
+            <input id="endDate" type="date" placeholder="Дата окончания" />
+            <button id="searchBtn">Искать</button>
+            <ul id="results"></ul>
+        </div>
 
         <!-- Сообщение: ошибки, уведомления -->
         <div

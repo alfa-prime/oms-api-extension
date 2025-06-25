@@ -32,28 +32,20 @@ export async function searchPatient() {
   };
 
   try {
-    // Используем функцию из apiService, которая уже вернет данные или выбросит ошибку
     const results = await api.fetchSearchResults(searchPayload);
-    // console.log("[SearchLogic] Результаты получены:", results); // Лог уже есть в apiService
-
-    // Проверка на массив и пустоту остается здесь, так как это логика представления
     if (!Array.isArray(results)) {
-      // Эта ошибка не должна возникать, если API всегда возвращает массив или ошибку
       console.error("[SearchLogic] API поиска вернул не массив:", results);
       throw new Error("Получен некорректный формат данных от сервера поиска.");
     }
 
     if (results.length === 0) {
       ui.showUserMessage("Записи не найдены", "info");
-      // ui.setSearchButtonState(true, "Искать"); // Вызывается в ui.showUserMessage если type не error
-      // ui.hideLoading(); // Вызывается в ui.showUserMessage
       return;
     }
 
     ui.hideLoading();
     ui.setSearchButtonState(true, "Искать");
 
-    // ui.clearResultsList(); // Уже было
     results.forEach((item) => {
       const person =
         `${item.Person_Surname || ""} ${item.Person_Firname || ""} ${item.Person_Secname || ""} (${item.Person_Birthday || "N/A"})`.trim();
@@ -74,117 +66,89 @@ export async function searchPatient() {
       const selectButton = li.querySelector("button");
       selectButton.addEventListener("click", async () => {
         ui.showLoading();
-        ui.setSelectButtonState(selectButton, false, "Обработка..."); // Используем ui.setSelectButtonState
+        ui.setSelectButtonState(selectButton, false, "Обработка...");
         ui.clearUserMessages();
 
         try {
           const enrichmentPayload = {
             started_data: item,
           };
-
-          // Используем функцию из apiService
           const enrichedDataForForm =
             await api.fetchEnrichedDataForPatient(enrichmentPayload);
           console.log("[SearchLogic] Обогащенные данные:", enrichedDataForForm);
 
           injectData(enrichedDataForForm, (injectionResults) => {
-            console.log(
-              "[SearchLogic] ВНУТРИ КОЛЛБЭКА injectData:",
-              injectionResults,
-            );
             ui.hideLoading();
 
-            try {
-              if (chrome.runtime.lastError) {
-                console.error(
-                  "[SearchLogic] Ошибка executeScript:",
-                  chrome.runtime.lastError,
-                );
-                ui.showUserError(
-                  "Ошибка при вставке данных: " +
-                    chrome.runtime.lastError.message,
-                );
-              } else if (
-                injectionResults &&
-                injectionResults[0] &&
-                injectionResults[0].result
-              ) {
-                const result = injectionResults[0].result;
-                if (result.success) {
-                  if (!result.allElementsFound) {
-                    ui.showUserMessage(
-                      "Данные частично вставлены (не все поля найдены). Проверьте форму.",
-                      "info",
-                    );
-                    window.close();
-                  } else {
-                    console.log(
-                      "[SearchLogic] Вставка успешна, пробуем закрыть popup...",
-                    );
-                    setTimeout(() => {
-                      console.log(
-                        "[SearchLogic] Закрываем popup через setTimeout",
-                      );
-                      window.close();
-                    }, 200); // задержка, чтобы избежать конфликтов с executeScript
-                  }
-                } else {
-                  console.warn("[SearchLogic] Ошибка вставки:", result.error);
-                  ui.showUserError(
-                    "Ошибка при вставке данных на странице: " +
-                      (result.error || "Неизвестная ошибка"),
-                  );
-                }
-              } else {
-                console.warn(
-                  "[SearchLogic] injectionResults пустой или в неверном формате",
-                );
-                ui.showUserError(
-                  "Не удалось получить результат операции вставки.",
-                );
-              }
-            } catch (err) {
-              console.error(
-                "[SearchLogic] Исключение в обработке колбэка:",
-                err,
-              );
-              ui.showUserError(
-                "Непредвиденная ошибка при обработке результата.",
-              );
+            const result = injectionResults?.[0]?.result;
+            if (!result || !result.success) {
+                const errorMsg = result?.error || chrome.runtime.lastError?.message || "Неизвестная ошибка вставки.";
+                ui.showUserError("Ошибка при заполнении формы: " + errorMsg);
+                ui.setSelectButtonState(selectButton, true, "Выбрать");
+                return;
             }
 
-            // Восстановление кнопки, если окно всё ещё открыто
-            if (!window.closed) {
-              console.log(
-                "[SearchLogic] Окно не закрыто, сбрасываем состояние кнопки",
-              );
-              ui.setSelectButtonState(selectButton, true, "Выбрать");
+            const operations = enrichedDataForForm.medical_service_data;
+
+            if ((operations && operations.length > 0) || !result.allElementsFound) {
+                // Если есть операции ИЛИ вставка была частичной, ОТКРЫВАЕМ НОВОЕ ОКНО
+                let title = "Форма заполнена. Найдены операции:";
+                if (operations && operations.length > 0) {
+                    title = "Данные вставлены. Найдены операции:";
+                } else {
+                    title = "Данные успешно вставлены";
+                }
+
+                const url = new URL(chrome.runtime.getURL('final-view.html'));
+                url.searchParams.set('title', encodeURIComponent(title));
+                if (operations && operations.length > 0) {
+                   url.searchParams.set('operations', encodeURIComponent(JSON.stringify(operations)));
+                }
+
+                // Расчет позиции для правого нижнего угла
+                const width = 340;
+                const height = 400;
+                const rightOffset = 20; // Отступ от правого края в пикселях
+                const bottomOffset = 20; // Отступ от нижнего края в пикселях
+                const left = Math.round(screen.availWidth - width - rightOffset);
+                const top = Math.round(screen.availHeight - height - bottomOffset);
+
+                // Отправляем сообщение в background script для создания окна
+                chrome.runtime.sendMessage({
+                    action: 'createStickyWindow',
+                    options: {
+                        url: url.href,
+                        width,
+                        height,
+                        left,
+                        top
+                    }
+                });
+
+                // И сразу закрываем текущий popup
+                window.close();
+
+            } else {
+                // Если операций нет и вставка была ПОЛНОЙ, ЗАКРЫВАЕМ старый popup
+                window.close();
             }
           });
+
         } catch (err) {
-          // Ошибки от fetchEnrichedDataForPatient
           console.error("[SearchLogic] Ошибка при обогащении:", err);
-          ui.showUserError(err.message); // err.message уже должен быть строкой от handleApiResponse
+          ui.showUserError(err.message);
           ui.setSelectButtonState(selectButton, true, "Выбрать");
-          ui.hideLoading(); // Убедимся, что лоадер скрыт
+          ui.hideLoading();
         }
       });
     });
   } catch (err) {
-    // Ошибки от fetchSearchResults
     console.error("[SearchLogic] Ошибка API поиска:", err);
-    ui.showUserError(err.message); // err.message уже должен быть строкой от handleApiResponse
-    // ui.setSearchButtonState(true, "Искать"); // Вызывается в ui.showUserError
-    // ui.hideLoading(); // Вызывается в ui.showUserError
+    ui.showUserError(err.message);
+  } finally {
+      const finalLoadingEl = document.getElementById("loading");
+      if (finalLoadingEl && finalLoadingEl.style.display !== "none") ui.hideLoading();
+      const finalSearchBtn = document.getElementById("searchBtn");
+      if (finalSearchBtn && finalSearchBtn.disabled) ui.setSearchButtonState(true, "Искать");
   }
-  // finally здесь больше не нужен, так как ui.showUserError и успешные ветки
-  // должны корректно сбрасывать UI. Если какая-то ветка не сбрасывает,
-  // то лучше добавить сброс в ту конкретную ветку.
-  // Для подстраховки, если какая-то ошибка не поймана или UI не сброшен:
-  const finalLoadingEl = document.getElementById("loading");
-  if (finalLoadingEl && finalLoadingEl.style.display !== "none")
-    ui.hideLoading();
-  const finalSearchBtn = document.getElementById("searchBtn");
-  if (finalSearchBtn && finalSearchBtn.disabled)
-    ui.setSearchButtonState(true, "Искать");
 }

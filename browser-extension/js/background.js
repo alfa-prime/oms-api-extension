@@ -14,18 +14,37 @@ async function setActionState(tabId, enabled) {
     }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// Делаем сам обработчик АСИНХРОННЫМ
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.action === 'updateIcon' && sender.tab) {
         console.log(`[Background] Получено сообщение от вкладки ${sender.tab.id}: элемент ${message.found ? 'найден' : 'не найден'}.`);
-        setActionState(sender.tab.id, message.found);
+        await setActionState(sender.tab.id, message.found);
     }
-});
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url) {
-        if (!tab.url.startsWith("https://gisoms.ffoms.gov.ru/")) {
-            console.log(`[Background] Пользователь ушел с домена ГИС ОМС. Принудительное отключение иконки для вкладки ${tabId}.`);
-            setActionState(tabId, false);
+    // Сообщение на создание окна теперь просто создает окно, без "липкости"
+    if (message.action === 'createStickyWindow') {
+        console.log('[Background] Получено сообщение на создание окна', message.options);
+        const { url, width, height, left, top } = message.options;
+        try {
+            // Просто создаем окно. Без сохранения ID и без лишней логики.
+            await chrome.windows.create({
+                url, type: 'popup', width, height, left, top, focused: true
+            });
+            console.log('[Background] Окно создано успешно.');
+        } catch (error) {
+            console.error('[Background] Ошибка при создании окна:', error);
         }
     }
 });
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        if (!tab.url.startsWith("https://gisoms.ffoms.gov.ru/")) {
+            console.log(`[Background] Пользователь ушел с домена ГИС ОМС. Принудительное отключение иконки для вкладки ${tabId}.`);
+            await setActionState(tabId, false);
+        }
+    }
+});
+
+// --- ЛОГИКА "ALWAYS-ON-TOP" ПОЛНОСТЬЮ УДАЛЕНА ---
+// Обработчики onFocusChanged и onRemoved больше не нужны.

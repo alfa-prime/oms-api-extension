@@ -10,6 +10,14 @@ const loadingEl = document.getElementById("loading");
 const searchBtn = document.getElementById("searchBtn"); // Основная кнопка поиска
 const resultsListEl = document.getElementById("results");
 
+// Элементы нового блока
+//const searchBlockEl = document.getElementById("search-block");
+//const finalViewEl = document.getElementById("final-view");
+//const finalViewTitleEl = document.getElementById("final-view-title");
+//const operationsListEl = document.getElementById("operations-list");
+//const closePopupBtn = document.getElementById("close-popup-btn");
+
+
 /**
  * Форматирует сообщение для отображения.
  * Справляется со строками, объектами Error и другими объектами.
@@ -121,3 +129,41 @@ export function setSelectButtonState(buttonElement, enabled, text = "Выбра�
         console.warn("[UI] setSelectButtonState вызван с неверным элементом:", buttonElement);
     }
 }
+
+/**
+ * Переключает интерфейс на финальный вид, показывая результат и/или операции.
+ * @param {Array<object>} operations - Массив объектов операций. Может быть пустым.
+ * @param {string} title - Заголовок для финального экрана.
+ */
+//export function switchToFinalView(operations, title) {
+//    if (!finalViewEl || !searchBlockEl) return;
+//
+//    // 1. Устанавливаем заголовок
+//    finalViewTitleEl.textContent = title;
+//
+//    // 2. Заполняем список операций, если они есть
+//    operationsListEl.innerHTML = '';
+//    if (operations && operations.length > 0) {
+//        operations.forEach(op => {
+//            const li = document.createElement('li');
+//            li.textContent = `${op.code} - ${op.name}`;
+//            operationsListEl.appendChild(li);
+//        });
+//        operationsListEl.style.display = 'block';
+//    } else {
+//        operationsListEl.style.display = 'none';
+//    }
+//
+//    // 3. Скрываем основной блок поиска и показываем финальный
+//    searchBlockEl.style.display = 'none';
+//    finalViewEl.style.display = 'block';
+//
+//    // 4. Назначаем обработчик на кнопку "Закрыть"
+//    const oldBtn = closePopupBtn;
+//    const newBtn = oldBtn.cloneNode(true);
+//    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+//
+//    newBtn.addEventListener('click', () => {
+//        window.close();
+//    }, { once: true });
+//}
