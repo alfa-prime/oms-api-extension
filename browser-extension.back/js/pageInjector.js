@@ -10,7 +10,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
   let allElementsFound = true;
 
   // ——— Вспомогательные функции ожидания ———
-  // ... (весь код вспомогательных функций остается без изменений) ...
   function waitForElement(doc, selector, timeout = 5000, interval = 100) {
     return new Promise((resolve, reject) => {
       const start = Date.now();
@@ -102,7 +101,7 @@ async function injectionTargetFunction(enrichedDataForForm) {
   }
 
   // ——— Функции заполнения полей ———
-  // ... (весь код функций заполнения остается без изменений) ...
+
   function fillPlainInput(doc, selector, value) {
     const inp = doc.querySelector(selector);
     if (!inp) {
@@ -306,7 +305,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
   try {
     let value; // Объявляем переменную для значений один раз
     // --- Последовательное и УСЛОВНОЕ заполнение полей из справочников ---
-    // ... (код заполнения полей остается без изменений) ...
     if ((value = dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"])) {
       await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationMedIndications']", column: "Код", value });
     }
@@ -375,33 +373,19 @@ async function injectionTargetFunction(enrichedDataForForm) {
       fillPlainInput(doc, "input[name='CardNumber']", value);
     }
 
-
     // --- Отправка сообщения о результате В КОНЦЕ ---
     const operations = dataMapToInsert.medical_service_data;
-    // ===== ИЗМЕНЕНИЕ НАЧАЛО =====
-    const diagnoses = dataMapToInsert.additional_diagnosis_data;
 
-    const hasOperations = operations && operations.length > 0;
-    const hasDiagnoses = diagnoses && diagnoses.length > 0;
-
-    if (hasOperations || hasDiagnoses || !allElementsFound) {
-      let title = "";
-      if (hasOperations && hasDiagnoses) {
-          title += "Найдены сопутствующие диагнозы и операционные услуги:";
-      } else if (hasOperations) {
-          title += "Найдены операционные услуги:";
-      } else if (hasDiagnoses) {
-          title += "Найдены сопутствующие диагнозы:";
-      } else {
-          title = "Данные вставлены.";
+    if ((operations && operations.length > 0) || !allElementsFound) {
+      let title = "Данные вставлены. Найдены операции:";
+      if (!allElementsFound && (!operations || operations.length === 0)) {
+        title = "Данные вставлены. Проверьте результат.";
       }
-
       chrome.runtime.sendMessage({
         action: 'showFinalResultInPage',
-        data: { title, operations, diagnoses } // Передаем и операции, и диагнозы
+        data: { title, operations }
       });
     }
-    // ===== ИЗМЕНЕНИЕ КОНЕЦ =====
 
     return { success: true };
 

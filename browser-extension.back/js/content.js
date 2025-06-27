@@ -7,10 +7,9 @@ const STYLE_ID = 'evmias-oms-result-styles';
 /**
  * Функция для создания и вставки блока с результатами.
  * @param {string} title - Заголовок блока.
- * @param {Array<object>} operations - Массив с данными об операциях.
- * @param {Array<object>} diagnoses - Массив с данными о диагнозах.
+ ** @param {Array<object>} operations - Массив с данными об операциях.
  */
-function injectResultBlock(title, operations, diagnoses) {
+function injectResultBlock(title, operations) {
     // --- 1. Удаляем старый блок, если он есть ---
     const oldContainer = document.getElementById(CONTAINER_ID);
     if (oldContainer) {
@@ -22,14 +21,14 @@ function injectResultBlock(title, operations, diagnoses) {
     }
 
     // --- 2. Создаем CSS-стили ---
-    // ===== ИЗМЕНЕНИЕ: УДАЛЕНЫ СТИЛИ ДЛЯ H4 =====
+    // Вставляем стили прямо в тег <style>, чтобы они были изолированы
     const styles = `
         #${CONTAINER_ID} {
             position: sticky;
             top: 0;
             left: 0;
             width: 100%;
-            padding: 10px 15px;
+            padding: 10px 15px; /* Уменьшаем вертикальный padding */
             background-color: #fbe8a6;
             border: none;
             border-bottom: 2px solid #9b1b30;
@@ -45,46 +44,50 @@ function injectResultBlock(title, operations, diagnoses) {
         }
         #${CONTAINER_ID} .content-wrapper {
             flex-grow: 1;
-            max-height: 150px;
-            overflow-y: auto;
         }
         #${CONTAINER_ID} h3 {
-            margin: 0 0 5px 0; /* Добавим небольшой отступ снизу */
+            margin: 0;
             text-align: left;
             color: #9b1b30;
-            font-size: 11px;
+            font-size: 11px; /* Уменьшаем шрифт заголовка */
         }
         #${CONTAINER_ID} ul {
             list-style: none;
-            padding-left: 0 !important;
-            margin: 0;
+            padding: 0;
+            margin: 4px 0 0 0;
+            max-height: 100px; /* Уменьшаем высоту скролла */
+            overflow-y: auto;
         }
         #${CONTAINER_ID} li {
-            font-size: 12px;
+            font-size: 12px; /* Уменьшаем шрифт списка */
             padding: 3px 0;
+            border-bottom: 1px dotted #ccc;
             display: flex;
             align-items: center;
         }
-        #${CONTAINER_ID} .diagnosis-name, #${CONTAINER_ID} .operation-name {
-            margin-left: 5px;
+        #${CONTAINER_ID} li:last-child {
+            border-bottom: none;
         }
-        /* Общие стили для кликабельных кодов */
-        #${CONTAINER_ID} .operation-code, #${CONTAINER_ID} .diagnosis-code {
+        /* Стили для кликабельного кода операции */
+        #${CONTAINER_ID} .operation-code {
             font-weight: bold;
             cursor: pointer;
             padding: 2px 4px;
             border-radius: 3px;
             transition: background-color 0.2s;
-            user-select: none;
+            user-select: none; /* Чтобы текст не выделялся при клике */
         }
-        #${CONTAINER_ID} .operation-code:hover, #${CONTAINER_ID} .diagnosis-code:hover {
+        #${CONTAINER_ID} .operation-code:hover {
             background-color: #e9e9e9;
+        }
+        #${CONTAINER_ID} .operation-name {
+             margin-left: 5px;
         }
         #${CONTAINER_ID} button {
             width: auto;
             margin: 0 0 0 20px;
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 6px 12px; /* Уменьшаем кнопку */
+            font-size: 12px; /* Уменьшаем шрифт кнопки */
             background: #9b1b30;
             color: white;
             border: none;
@@ -102,60 +105,18 @@ function injectResultBlock(title, operations, diagnoses) {
     const container = document.createElement('div');
     container.id = CONTAINER_ID;
 
+    // Оборачиваем контент и кнопку в div-ы для flexbox
     container.innerHTML = `
         <div class="content-wrapper">
             <h3>${title}</h3>
-            <div id="evmias-diagnoses-container"></div>
-            <div id="evmias-operations-container" style="margin-top: 5px;"></div>
+            <ul id="evmias-operations-list-in-page"></ul>
         </div>
         <button id="evmias-oms-close-btn">Закрыть</button>
     `;
 
-    // --- Логика для диагнозов ---
-    const diagnosesContainer = container.querySelector('#evmias-diagnoses-container');
-    if (diagnoses && diagnoses.length > 0) {
-        // ===== ИЗМЕНЕНИЕ: УДАЛЕНО СОЗДАНИЕ H4 =====
-        const listEl = document.createElement('ul');
-        diagnoses.forEach(diag => {
-            const li = document.createElement('li');
-
-            const codeSpan = document.createElement('span');
-            codeSpan.className = 'diagnosis-code';
-            codeSpan.textContent = diag.code;
-            codeSpan.title = 'Нажмите, чтобы скопировать код';
-
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'diagnosis-name';
-            nameSpan.textContent = diag.name;
-
-            codeSpan.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                try {
-                    await navigator.clipboard.writeText(diag.code);
-                    const originalText = codeSpan.textContent;
-                    codeSpan.textContent = 'Скопировано!';
-                    codeSpan.style.color = '#9b1b30';
-                    setTimeout(() => {
-                        codeSpan.textContent = originalText;
-                        codeSpan.style.color = 'inherit';
-                    }, 1500);
-                } catch (err) {
-                    console.error('Не удалось скопировать текст: ', err);
-                }
-            });
-
-            li.appendChild(codeSpan);
-            li.appendChild(nameSpan);
-            listEl.appendChild(li);
-        });
-        diagnosesContainer.appendChild(listEl);
-    }
-
-    // --- Логика для операций ---
-    const operationsContainer = container.querySelector('#evmias-operations-container');
+    // --- 4. Заполняем список операций, если они есть, и добавляем логику копирования ---
     if (operations && operations.length > 0) {
-        // ===== ИЗМЕНЕНИЕ: УДАЛЕНО СОЗДАНИЕ H4 =====
-        const operationsListEl = document.createElement('ul');
+        const operationsListEl = container.querySelector('#evmias-operations-list-in-page');
         operations.forEach(op => {
             const li = document.createElement('li');
 
@@ -169,7 +130,7 @@ function injectResultBlock(title, operations, diagnoses) {
             nameSpan.textContent = `${op.name}`;
 
             codeSpan.addEventListener('click', async (e) => {
-                e.stopPropagation();
+                e.stopPropagation(); // Предотвращаем всплытие события
                 try {
                     await navigator.clipboard.writeText(op.code);
                     const originalText = codeSpan.textContent;
@@ -188,33 +149,41 @@ function injectResultBlock(title, operations, diagnoses) {
             li.appendChild(nameSpan);
             operationsListEl.appendChild(li);
         });
-        operationsContainer.appendChild(operationsListEl);
+    } else {
+        // Если операций нет, скрываем пустой список
+        const operationsListEl = container.querySelector('#evmias-operations-list-in-page');
+        if (operationsListEl) operationsListEl.style.display = 'none';
     }
 
-    // --- Вставка блока и кнопка закрытия (без изменений) ---
+
+    // --- 5. Вставляем блок в начало body ---
     document.body.prepend(container);
 
+    // --- 6. Добавляем обработчик на кнопку "Закрыть" ---
     container.querySelector('#evmias-oms-close-btn').addEventListener('click', () => {
         container.remove();
-        styleSheet.remove();
+        styleSheet.remove(); // Удаляем и стили
     });
 }
 
 
-// --- Основная логика Content Script (без изменений) ---
+// --- Основная логика Content Script ---
 
+// Этот скрипт выполняется только внутри iframe
 if (window.self !== window.top) {
     console.log('✅ [Content Script] Запущен внутри iframe и готов получать сообщения.');
 
+    // Слушаем сообщения от background.js
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'showFinalResultInPage') {
             console.log('[Content Script] Получены данные для отображения:', message.data);
-            const { title, operations, diagnoses } = message.data;
-            injectResultBlock(title, operations, diagnoses);
+            const { title, operations } = message.data;
+            injectResultBlock(title, operations);
         }
     });
 }
 
+// Старая логика для активации иконки (оставляем, она не мешает)
 const TARGET_ELEMENT_SELECTOR = "input[name='ReferralHospitalizationNumberTicket']";
 let isElementFound = false;
 
