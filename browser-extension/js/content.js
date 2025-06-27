@@ -1,8 +1,21 @@
 // browser-extension/js/content.js
 
-// Уникальные ID для наших элементов, чтобы избежать конфликтов
 const CONTAINER_ID = 'evmias-oms-result-container';
 const STYLE_ID = 'evmias-oms-result-styles';
+
+/**
+ * Функция для удаления нашей панели и стилей.
+ */
+function removeInjectedElements() {
+    const container = document.getElementById(CONTAINER_ID);
+    if (container) {
+        container.remove();
+    }
+    const styleSheet = document.getElementById(STYLE_ID);
+    if (styleSheet) {
+        styleSheet.remove();
+    }
+}
 
 /**
  * Функция для создания и вставки блока с результатами.
@@ -11,18 +24,8 @@ const STYLE_ID = 'evmias-oms-result-styles';
  * @param {Array<object>} diagnoses - Массив с данными о диагнозах.
  */
 function injectResultBlock(title, operations, diagnoses) {
-    // --- 1. Удаляем старый блок, если он есть ---
-    const oldContainer = document.getElementById(CONTAINER_ID);
-    if (oldContainer) {
-        oldContainer.remove();
-    }
-    const oldStyle = document.getElementById(STYLE_ID);
-    if (oldStyle) {
-        oldStyle.remove();
-    }
+    removeInjectedElements();
 
-    // --- 2. Создаем CSS-стили ---
-    // ===== ИЗМЕНЕНИЕ: УДАЛЕНЫ СТИЛИ ДЛЯ H4 =====
     const styles = `
         #${CONTAINER_ID} {
             position: sticky;
@@ -49,7 +52,7 @@ function injectResultBlock(title, operations, diagnoses) {
             overflow-y: auto;
         }
         #${CONTAINER_ID} h3 {
-            margin: 0 0 5px 0; /* Добавим небольшой отступ снизу */
+            margin: 0 0 5px 0;
             text-align: left;
             color: #9b1b30;
             font-size: 11px;
@@ -68,7 +71,6 @@ function injectResultBlock(title, operations, diagnoses) {
         #${CONTAINER_ID} .diagnosis-name, #${CONTAINER_ID} .operation-name {
             margin-left: 5px;
         }
-        /* Общие стили для кликабельных кодов */
         #${CONTAINER_ID} .operation-code, #${CONTAINER_ID} .diagnosis-code {
             font-weight: bold;
             cursor: pointer;
@@ -114,20 +116,16 @@ function injectResultBlock(title, operations, diagnoses) {
     // --- Логика для диагнозов ---
     const diagnosesContainer = container.querySelector('#evmias-diagnoses-container');
     if (diagnoses && diagnoses.length > 0) {
-        // ===== ИЗМЕНЕНИЕ: УДАЛЕНО СОЗДАНИЕ H4 =====
         const listEl = document.createElement('ul');
-        diagnoses.forEach(diag => {
+        diagnoses.forEach(diag => { /* ... код создания списка диагнозов ... */
             const li = document.createElement('li');
-
             const codeSpan = document.createElement('span');
             codeSpan.className = 'diagnosis-code';
             codeSpan.textContent = diag.code;
             codeSpan.title = 'Нажмите, чтобы скопировать код';
-
             const nameSpan = document.createElement('span');
             nameSpan.className = 'diagnosis-name';
             nameSpan.textContent = diag.name;
-
             codeSpan.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
@@ -143,7 +141,6 @@ function injectResultBlock(title, operations, diagnoses) {
                     console.error('Не удалось скопировать текст: ', err);
                 }
             });
-
             li.appendChild(codeSpan);
             li.appendChild(nameSpan);
             listEl.appendChild(li);
@@ -151,23 +148,19 @@ function injectResultBlock(title, operations, diagnoses) {
         diagnosesContainer.appendChild(listEl);
     }
 
-    // --- Логика для операций ---
+    // --- Логика для операций  ---
     const operationsContainer = container.querySelector('#evmias-operations-container');
     if (operations && operations.length > 0) {
-        // ===== ИЗМЕНЕНИЕ: УДАЛЕНО СОЗДАНИЕ H4 =====
         const operationsListEl = document.createElement('ul');
-        operations.forEach(op => {
+        operations.forEach(op => { /* ... код создания списка операций ... */
             const li = document.createElement('li');
-
             const codeSpan = document.createElement('span');
             codeSpan.className = 'operation-code';
             codeSpan.textContent = op.code;
             codeSpan.title = 'Нажмите, чтобы скопировать код';
-
             const nameSpan = document.createElement('span');
             nameSpan.className = 'operation-name';
             nameSpan.textContent = `${op.name}`;
-
             codeSpan.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
@@ -183,7 +176,6 @@ function injectResultBlock(title, operations, diagnoses) {
                     console.error('Не удалось скопировать текст: ', err);
                 }
             });
-
             li.appendChild(codeSpan);
             li.appendChild(nameSpan);
             operationsListEl.appendChild(li);
@@ -191,21 +183,19 @@ function injectResultBlock(title, operations, diagnoses) {
         operationsContainer.appendChild(operationsListEl);
     }
 
-    // --- Вставка блока и кнопка закрытия (без изменений) ---
+    // --- 5. Вставляем блок в начало body ---
     document.body.prepend(container);
 
-    container.querySelector('#evmias-oms-close-btn').addEventListener('click', () => {
-        container.remove();
-        styleSheet.remove();
-    });
+    container.querySelector('#evmias-oms-close-btn').addEventListener('click', removeInjectedElements);
 }
 
 
-// --- Основная логика Content Script (без изменений) ---
+// --- Основная логика Content Script ---
 
 if (window.self !== window.top) {
     console.log('✅ [Content Script] Запущен внутри iframe и готов получать сообщения.');
 
+    // Слушаем сообщения от background.js
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'showFinalResultInPage') {
             console.log('[Content Script] Получены данные для отображения:', message.data);
@@ -213,6 +203,29 @@ if (window.self !== window.top) {
             injectResultBlock(title, operations, diagnoses);
         }
     });
+
+    let nativeCloseListenerAttached = false;
+    const nativeButtonObserver = new MutationObserver(() => {
+        if (nativeCloseListenerAttached) {
+            return;
+        }
+
+        const allSpans = document.querySelectorAll('span.x-btn-inner');
+        const closeSpan = Array.from(allSpans).find(span => span.textContent.trim() === 'Закрыть');
+
+        if (closeSpan) {
+            const closeButton = closeSpan.closest('button');
+            if (closeButton) {
+                console.log('[Content Script] Найдена нативная кнопка "Закрыть". Привязываем обработчик.');
+                closeButton.addEventListener('click', removeInjectedElements);
+                nativeCloseListenerAttached = true;
+                nativeButtonObserver.disconnect();
+            }
+        }
+    });
+
+    // Начинаем наблюдение за изменениями в body iframe
+    nativeButtonObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 const TARGET_ELEMENT_SELECTOR = "input[name='ReferralHospitalizationNumberTicket']";
@@ -227,6 +240,6 @@ function checkElementAndNotify() {
     }
 }
 
-const observer = new MutationObserver(checkElementAndNotify);
-observer.observe(document.body, { childList: true, subtree: true });
+const mainObserver = new MutationObserver(checkElementAndNotify);
+mainObserver.observe(document.body, { childList: true, subtree: true });
 checkElementAndNotify();

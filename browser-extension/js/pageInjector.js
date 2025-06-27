@@ -10,7 +10,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
   let allElementsFound = true;
 
   // ——— Вспомогательные функции ожидания ———
-  // ... (весь код вспомогательных функций остается без изменений) ...
   function waitForElement(doc, selector, timeout = 5000, interval = 100) {
     return new Promise((resolve, reject) => {
       const start = Date.now();
@@ -102,7 +101,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
   }
 
   // ——— Функции заполнения полей ———
-  // ... (весь код функций заполнения остается без изменений) ...
   function fillPlainInput(doc, selector, value) {
     const inp = doc.querySelector(selector);
     if (!inp) {
@@ -306,7 +304,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
   try {
     let value; // Объявляем переменную для значений один раз
     // --- Последовательное и УСЛОВНОЕ заполнение полей из справочников ---
-    // ... (код заполнения полей остается без изменений) ...
     if ((value = dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"])) {
       await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationMedIndications']", column: "Код", value });
     }
@@ -378,7 +375,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
 
     // --- Отправка сообщения о результате В КОНЦЕ ---
     const operations = dataMapToInsert.medical_service_data;
-    // ===== ИЗМЕНЕНИЕ НАЧАЛО =====
     const diagnoses = dataMapToInsert.additional_diagnosis_data;
 
     const hasOperations = operations && operations.length > 0;
@@ -401,7 +397,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
         data: { title, operations, diagnoses } // Передаем и операции, и диагнозы
       });
     }
-    // ===== ИЗМЕНЕНИЕ КОНЕЦ =====
 
     return { success: true };
 
@@ -412,10 +407,6 @@ async function injectionTargetFunction(enrichedDataForForm) {
   }
 }
 
-/**
- * Эта функция вызывается из popup'а (searchLogic.js).
- * Она просто запускает скрипт и больше не ждет сложный результат.
- */
 export function injectData(enrichedDataForForm) { // Убираем колбэк
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (chrome.runtime.lastError || !tabs || !tabs.length) {
