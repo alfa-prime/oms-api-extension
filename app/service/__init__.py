@@ -6,6 +6,7 @@ from .evmias.request import (
     fetch_disease_data,
     fetch_referred_org_by_id,
     fetch_medical_service_data,
+    fetch_additional_diagnosis,
 )
 from .extension.enrich import enrich_data
 from .extension.helpers import (
@@ -18,7 +19,8 @@ from .extension.helpers import (
     get_disease_type_code,
     get_department_name,
     get_department_code,
-    get_medical_care_profile
+    get_medical_care_profile,
+    get_valid_additional_diagnosis,
 )
 from .extension.started import fetch_started_data
 
@@ -34,6 +36,7 @@ __all__ = [
     "get_department_name",
     "get_department_code",
     "get_medical_care_profile",
+    "get_valid_additional_diagnosis",
     "fetch_person_data",
     "fetch_movement_data",
     "fetch_referral_data",
@@ -41,5 +44,6 @@ __all__ = [
     "fetch_referred_org_by_id",
     "fetch_started_data",
     "fetch_medical_service_data",
+    "fetch_additional_diagnosis",
     "enrich_data",
 ]

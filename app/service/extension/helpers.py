@@ -1,4 +1,6 @@
+import re
 from datetime import datetime, timedelta
+from typing import Any
 
 from app.core import logger, get_settings
 from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs, department_codes, medical_care_profile
@@ -205,3 +207,24 @@ async def get_disease_type_code(disease_data: dict) -> str | None:
                 return acute
             case _:
                 return None
+
+
+async def get_valid_additional_diagnosis(data: list) -> list[dict[str, str | Any]]:
+    """
+    Фильтрует дополнительные диагнозы по МКБ E10/E11 (сахарный диабет)
+    Всегда возвращает список (может быть пустым).
+    """
+    if not data:
+        return []
+
+    diagnosis_pattern = re.compile(r"^E(10|11)\.\d$")
+    valid_diagnosis = []
+
+    for entry in data:
+        diagnosis_code = entry.get("code")
+        diagnosis_name = entry.get("name")
+
+        if isinstance(diagnosis_code, str) and diagnosis_pattern.match(diagnosis_code):
+            valid_diagnosis.append({'code': diagnosis_code, 'name': diagnosis_name})
+
+    return valid_diagnosis

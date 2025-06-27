@@ -19,18 +19,26 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         await setActionState(sender.tab.id, message.found);
     }
 
-    // Пересылаем сообщение от popup в content script активной вкладки
+    // Это сообщение теперь приходит от pageInjector.js
     if (message.action === 'showFinalResultInPage') {
-        try {
-            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-            if (tab) {
-                // Отправляем сообщение именно в эту вкладку
-                await chrome.tabs.sendMessage(tab.id, message);
-                console.log(`[Background] Сообщение 'showFinalResultInPage' переслано на вкладку ${tab.id}`);
+        // ID вкладки теперь берется из "sender"
+        if (sender.tab && sender.tab.id) {
+            try {
+                // Используем ID вкладки, откуда пришло сообщение
+                await chrome.tabs.sendMessage(sender.tab.id, message);
+                console.log(`[Background] Сообщение 'showFinalResultInPage' переслано на вкладку ${sender.tab.id}`);
+            } catch (error) {
+                console.error(`[Background] Ошибка пересылки сообщения на вкладку ${sender.tab.id}:`, error);
             }
-        } catch (error) {
-            console.error('[Background] Ошибка пересылки сообщения:', error);
+        } else {
+            console.error('[Background] Сообщение пришло не от вкладки, некуда пересылать.');
         }
+    }
+
+    // Сообщение об ошибке (тоже от pageInjector)
+    if (message.action === 'injectionError') {
+        console.error(`[Background] Ошибка от pageInjector на вкладке ${sender.tab.id}: ${message.error}`);
+        // Здесь можно добавить логику уведомления пользователя, если нужно
     }
 });
 

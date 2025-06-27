@@ -70,45 +70,15 @@ export async function searchPatient() {
         ui.clearUserMessages();
 
         try {
-          const enrichmentPayload = {
-            started_data: item,
-          };
-          const enrichedDataForForm =
-            await api.fetchEnrichedDataForPatient(enrichmentPayload);
+          const enrichmentPayload = { started_data: item };
+          const enrichedDataForForm = await api.fetchEnrichedDataForPatient(enrichmentPayload);
 
-          injectData(enrichedDataForForm, (injectionResults) => {
-            ui.hideLoading();
+          // Просто вызываем injectData и передаем все данные.
+          // Не используем колбэк.
+          injectData(enrichedDataForForm);
 
-            const result = injectionResults?.[0]?.result;
-            if (!result || !result.success) {
-                const errorMsg = result?.error || chrome.runtime.lastError?.message || "Неизвестная ошибка вставки.";
-                ui.showUserError("Ошибка при заполнении формы: " + errorMsg);
-                ui.setSelectButtonState(selectButton, true, "Выбрать");
-                return;
-            }
-
-            const operations = enrichedDataForForm.medical_service_data;
-
-            // Если есть операции или вставка была частичной...
-            if ((operations && operations.length > 0) || !result.allElementsFound) {
-                let title = "Дополнительные сведения:";
-                if (!result.allElementsFound && (!operations || operations.length === 0)) {
-                    title = "Данные вставлены. Проверьте результат.";
-                }
-
-                // ...отправляем сообщение в content script для отображения блока
-                chrome.runtime.sendMessage({
-                    action: 'showFinalResultInPage',
-                    data: {
-                        title,
-                        operations,
-                    }
-                });
-            }
-
-            // В любом случае успешной вставки закрываем popup
-            window.close();
-          });
+          // Закрываем popup немедленно, не дожидаясь завершения.
+          window.close();
 
         } catch (err) {
           console.error("[SearchLogic] Ошибка при обогащении:", err);

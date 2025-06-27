@@ -3,11 +3,13 @@
 /**
  * Эта функция будет внедрена и выполнена на странице ГИС ОМС.
  * Она использует async/await для более чистого и последовательного выполнения шагов.
- * @param {object} dataMapToInsert - Карта данных для вставки.
+ * @param {object} enrichedDataForForm - Полный объект с данными, включая операции.
  */
-async function injectionTargetFunction(dataMapToInsert) {
-  // ——— Вспомогательные функции ожидания (остаются без изменений) ———
+async function injectionTargetFunction(enrichedDataForForm) {
+  const dataMapToInsert = enrichedDataForForm; // Используем весь объект
+  let allElementsFound = true;
 
+  // ——— Вспомогательные функции ожидания ———
   function waitForElement(doc, selector, timeout = 5000, interval = 100) {
     return new Promise((resolve, reject) => {
       const start = Date.now();
@@ -15,7 +17,9 @@ async function injectionTargetFunction(dataMapToInsert) {
         const el = doc.querySelector(selector);
         if (el) return resolve(el);
         if (Date.now() - start > timeout) {
-          return reject(new Error("Элемент не найден в DOM: " + selector));
+          console.warn("Элемент не найден в DOM:", selector);
+          allElementsFound = false;
+          resolve(null);
         }
         setTimeout(check, interval);
       })();
@@ -45,7 +49,7 @@ async function injectionTargetFunction(dataMapToInsert) {
   function waitForGridRowsSettled(doc, opts = {}) {
     const { timeout = 10000, stableDelay = 1500 } = opts;
     return new Promise((resolve, reject) => {
-      let lastCount = -1; // Используем -1 для первого срабатывания
+      let lastCount = -1;
       let stableSince = Date.now();
       const start = Date.now();
       (function check() {
@@ -56,7 +60,7 @@ async function injectionTargetFunction(dataMapToInsert) {
           lastCount = count;
           stableSince = Date.now();
         } else if (Date.now() - stableSince > stableDelay) {
-          return resolve(count); // Стабилизировалось
+          return resolve(count);
         }
 
         if (Date.now() - start > timeout) {
@@ -96,12 +100,13 @@ async function injectionTargetFunction(dataMapToInsert) {
     });
   }
 
-  // ——— Функции заполнения полей (остаются без изменений) ———
+  // ——— Функции заполнения полей ———
 
   function fillPlainInput(doc, selector, value) {
     const inp = doc.querySelector(selector);
     if (!inp) {
       console.warn(`[PLAIN INPUT] Не найден элемент ${selector}`);
+      allElementsFound = false;
       return;
     }
     inp.focus();
@@ -113,7 +118,10 @@ async function injectionTargetFunction(dataMapToInsert) {
 
   function fillDateInput({ doc, selector, value }) {
     const input = doc.querySelector(selector);
-    if (!input) return;
+    if (!input) {
+      allElementsFound = false;
+      return;
+    }
     input.focus();
     input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -127,10 +135,9 @@ async function injectionTargetFunction(dataMapToInsert) {
     fieldSelector,
     value,
   }) {
-    console.log(`[DROPDOWN] Выбор "${value}" из ${fieldSelector}`);
-
-    // 1. Находим инпут и его триггер (стрелку)
     const input = await waitForElement(doc, fieldSelector);
+    if (!input) return;
+
     const trigger = input
       .closest(".x-form-item-body")
       ?.querySelector(".x-form-trigger");
@@ -140,7 +147,6 @@ async function injectionTargetFunction(dataMapToInsert) {
       );
     }
 
-    // 2. Кликаем на триггер, чтобы открыть список
     ["mousedown", "mouseup", "click"].forEach((evt) =>
       trigger.dispatchEvent(
         new MouseEvent(evt, {
@@ -151,15 +157,13 @@ async function injectionTargetFunction(dataMapToInsert) {
       ),
     );
 
-    // 3. Ждем появления самого выпадающего списка
     const dropdownList = await waitForElement(
       doc,
       ".x-boundlist:not(.x-boundlist-hidden)",
       5000,
     );
 
-    // 4. Ждем и ищем нужный элемент в списке по тексту
-    await waitForElement(dropdownList, ".x-boundlist-item", 2000); // Ждем появления элементов
+    await waitForElement(dropdownList, ".x-boundlist-item", 2000);
     const options = Array.from(
       dropdownList.querySelectorAll(".x-boundlist-item"),
     );
@@ -168,13 +172,12 @@ async function injectionTargetFunction(dataMapToInsert) {
     );
 
     if (!targetOption) {
-      doc.body.click(); // Попытка закрыть список перед ошибкой
+      doc.body.click();
       throw new Error(
         `Опция "${value}" не найдена в выпадающем списке для ${fieldSelector}.`,
       );
     }
 
-    // 5. Кликаем на найденную опцию
     ["mousedown", "mouseup", "click"].forEach((evt) =>
       targetOption.dispatchEvent(
         new MouseEvent(evt, {
@@ -184,12 +187,8 @@ async function injectionTargetFunction(dataMapToInsert) {
         }),
       ),
     );
-
-    // Небольшая пауза, чтобы значение успело примениться
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-
-  // ——— Основная функция селекта из справочника (переписана на async/await) ———
 
   async function selectFromReferenceField({
     doc,
@@ -199,6 +198,8 @@ async function injectionTargetFunction(dataMapToInsert) {
     value,
   }) {
     const input = await waitForElement(doc, fieldSelector);
+    if (!input) return;
+
     input.focus();
     ["mousedown", "mouseup", "click"].forEach((evt) =>
       input.dispatchEvent(
@@ -211,7 +212,7 @@ async function injectionTargetFunction(dataMapToInsert) {
     );
 
     await waitForLoadMaskGone(doc);
-    await waitForReferenceWindow(doc, true); // Ждем открытия
+    await waitForReferenceWindow(doc, true);
     await waitForGridRowsSettled(doc);
 
     const headerText = column.trim();
@@ -288,262 +289,127 @@ async function injectionTargetFunction(dataMapToInsert) {
       ),
     );
 
-    await waitForReferenceWindow(doc, false); // Ждем закрытия
+    await waitForReferenceWindow(doc, false);
   }
 
-  // ——— ОСНОВНОЙ ЗАПУСК (переписан на async/await) ———
-
+  // ——— ОСНОВНОЙ ЗАПУСК ———
   console.log("[PAGE INJECTOR] Вставка данных:", dataMapToInsert);
 
-  const iframe =
-    document.querySelector("iframe[name='mainFrame']") ||
-    document.querySelector("iframe");
+  const iframe = document.querySelector("iframe[name='mainFrame']") || document.querySelector("iframe");
   if (!iframe) {
-    return { success: false, error: "Основной iframe не найден на странице." };
+    chrome.runtime.sendMessage({ action: 'injectionError', error: "Основной iframe не найден на странице." });
+    return;
   }
   const doc = iframe.contentWindow.document;
 
   try {
     let value; // Объявляем переменную для значений один раз
-
     // --- Последовательное и УСЛОВНОЕ заполнение полей из справочников ---
-
-    if (
-      (value =
-        dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='ReferralHospitalizationMedIndications']",
-        column: "Код",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"])) {
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationMedIndications']", column: "Код", value });
     }
     if ((value = dataMapToInsert["input[name='VidMpV008']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='VidMpV008']",
-        column: "Код",
-        value,
-      });
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='VidMpV008']", column: "Код", value });
     }
     if ((value = dataMapToInsert["input[name='HospitalizationInfoV006']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoV006']",
-        column: "Код",
-        value,
-      });
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV006']", column: "Код", value });
     }
     if ((value = dataMapToInsert["input[name='HospitalizationInfoV014']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoV014']",
-        column: "Код",
-        value,
-      });
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV014']", column: "Код", value });
     }
-    if (
-      (value =
-        dataMapToInsert[
-          "input[name='HospitalizationInfoSpecializedMedicalProfile']"
-        ])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector:
-          "input[name='HospitalizationInfoSpecializedMedicalProfile']",
-        column: "Код",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='HospitalizationInfoSpecializedMedicalProfile']"])) {
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoSpecializedMedicalProfile']", column: "Код", value });
     }
-    if (
-      (value = dataMapToInsert["input[name='HospitalizationInfoSubdivision']"])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoSubdivision']",
-        column: "Краткое наименование",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='HospitalizationInfoSubdivision']"])) {
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoSubdivision']", column: "Краткое наименование", value });
     }
-    if (
-      (value =
-        dataMapToInsert[
-          "input[name='HospitalizationInfoDiagnosisMainDisease']"
-        ])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoDiagnosisMainDisease']",
-        column: "Код МКБ",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='HospitalizationInfoDiagnosisMainDisease']"])) {
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoDiagnosisMainDisease']", column: "Код МКБ", value });
     }
     if ((value = dataMapToInsert["input[name='HospitalizationInfoV020']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoV020']",
-        column: "Код",
-        value,
-      });
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoV020']", column: "Код", value });
     }
-    if (
-      (value = dataMapToInsert["input[name='HospitalizationInfoC_ZABV027']"])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoC_ZABV027']",
-        column: "Код",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='HospitalizationInfoC_ZABV027']"])) {
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='HospitalizationInfoC_ZABV027']", column: "Код", value });
     }
     if ((value = dataMapToInsert["input[name='ResultV009']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='ResultV009']",
-        column: "Код",
-        value,
-      });
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ResultV009']", column: "Код", value });
     }
     if ((value = dataMapToInsert["input[name='IshodV012']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='IshodV012']",
-        column: "Код",
-        value,
-      });
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='IshodV012']", column: "Код", value });
     }
-    if (
-      (value =
-        dataMapToInsert[
-          "input[name='ReferralHospitalizationSendingDepartment']"
-        ])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='ReferralHospitalizationSendingDepartment']",
-        column: "Реестровый номер",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='ReferralHospitalizationSendingDepartment']"])) {
+      await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='ReferralHospitalizationSendingDepartment']", column: "Реестровый номер", value });
     }
-
     // --- Условное заполнение простых полей и дат ---
-
-    if (
-      (value =
-        dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"])
-    ) {
-      fillDateInput({
-        doc,
-        selector: "input[name='ReferralHospitalizationDateTicket']",
-        value,
-      });
+    if ((value = dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"])) {
+      fillDateInput({ doc, selector: "input[name='ReferralHospitalizationDateTicket']", value });
     }
     if ((value = dataMapToInsert["input[name='DateBirth']"])) {
       fillDateInput({ doc, selector: "input[name='DateBirth']", value });
     }
     if ((value = dataMapToInsert["input[name='TreatmentDateStart']"])) {
-      fillDateInput({
-        doc,
-        selector: "input[name='TreatmentDateStart']",
-        value,
-      });
+      fillDateInput({ doc, selector: "input[name='TreatmentDateStart']", value });
     }
     if ((value = dataMapToInsert["input[name='TreatmentDateEnd']"])) {
       fillDateInput({ doc, selector: "input[name='TreatmentDateEnd']", value });
     }
-
-    if (
-      (value =
-        dataMapToInsert["input[name='ReferralHospitalizationNumberTicket']"])
-    ) {
-      fillPlainInput(
-        doc,
-        "input[name='ReferralHospitalizationNumberTicket']",
-        value,
-      );
+    if ((value = dataMapToInsert["input[name='ReferralHospitalizationNumberTicket']"])) {
+      fillPlainInput( doc, "input[name='ReferralHospitalizationNumberTicket']", value );
     }
     if ((value = dataMapToInsert["input[name='Enp']"])) {
       fillPlainInput(doc, "input[name='Enp']", value);
     }
     if ((value = dataMapToInsert["input[name='Gender']"])) {
-      await selectFromDropdown({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='Gender']",
-        value,
-      });
+      await selectFromDropdown({ doc, iframeWindow: iframe.contentWindow, fieldSelector: "input[name='Gender']", value });
     }
-    if (
-      (value =
-        dataMapToInsert["input[name='HospitalizationInfoNameDepartment']"])
-    ) {
-      fillPlainInput(
-        doc,
-        "input[name='HospitalizationInfoNameDepartment']",
-        value,
-      );
+    if ((value = dataMapToInsert["input[name='HospitalizationInfoNameDepartment']"])) {
+      fillPlainInput( doc, "input[name='HospitalizationInfoNameDepartment']", value );
     }
-    if (
-      (value = dataMapToInsert["input[name='HospitalizationInfoOfficeCode']"])
-    ) {
+    if ((value = dataMapToInsert["input[name='HospitalizationInfoOfficeCode']"])) {
       fillPlainInput(doc, "input[name='HospitalizationInfoOfficeCode']", value);
     }
     if ((value = dataMapToInsert["input[name='CardNumber']"])) {
       fillPlainInput(doc, "input[name='CardNumber']", value);
     }
 
+    // --- Отправка сообщения о результате В КОНЦЕ ---
+    const operations = dataMapToInsert.medical_service_data;
+
+    if ((operations && operations.length > 0) || !allElementsFound) {
+      let title = "Данные вставлены. Найдены операции:";
+      if (!allElementsFound && (!operations || operations.length === 0)) {
+        title = "Данные вставлены. Проверьте результат.";
+      }
+      chrome.runtime.sendMessage({
+        action: 'showFinalResultInPage',
+        data: { title, operations }
+      });
+    }
+
     return { success: true };
+
   } catch (error) {
     console.error("[PAGE INJECTOR] Ошибка во время выполнения:", error);
+    chrome.runtime.sendMessage({ action: 'injectionError', error: error.message || String(error) });
     return { success: false, error: error.message || String(error) };
   }
 }
 
 /**
- * Эта функция вызывается из popup'а (searchLogic.js). Она не меняется.
+ * Эта функция вызывается из popup'а (searchLogic.js).
+ * Она просто запускает скрипт и больше не ждет сложный результат.
  */
-export function injectData(dataMapToInsert, callbackAfterInjection) {
+export function injectData(enrichedDataForForm) { // Убираем колбэк
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (chrome.runtime.lastError) {
-      console.error(
-        "[PAGE INJECTOR] Ошибка chrome.tabs.query:",
-        chrome.runtime.lastError.message,
-      );
-      if (typeof callbackAfterInjection === "function")
-        callbackAfterInjection();
+    if (chrome.runtime.lastError || !tabs || !tabs.length) {
+      console.error("[PAGE INJECTOR] Ошибка chrome.tabs.query:", chrome.runtime.lastError?.message);
       return;
     }
-    if (!tabs || !tabs.length) {
-      console.error("[PAGE INJECTOR] Нет активной вкладки");
-      if (typeof callbackAfterInjection === "function")
-        callbackAfterInjection();
-      return;
-    }
-    chrome.scripting.executeScript(
-      {
-        target: { tabId: tabs[0].id },
-        func: injectionTargetFunction,
-        args: [dataMapToInsert],
-      },
-      (results) => {
-        console.log("[PAGE INJECTOR] injectionResults:", results);
-        if (typeof callbackAfterInjection === "function")
-          callbackAfterInjection(results);
-      },
-    );
+    chrome.scripting.executeScript({
+      target: { tabId: tabs[0].id },
+      func: injectionTargetFunction,
+      args: [enrichedDataForForm], // Передаем все данные
+    });
   });
 }

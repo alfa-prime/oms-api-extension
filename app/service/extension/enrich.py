@@ -12,6 +12,7 @@ from app.service.evmias.request import (
     fetch_referral_data,
     fetch_disease_data,
     fetch_medical_service_data,
+    fetch_additional_diagnosis,
 )
 from app.service.extension.helpers import (
     get_referred_organization,
@@ -24,6 +25,7 @@ from app.service.extension.helpers import (
     get_department_name,
     get_department_code,
     get_medical_care_profile,
+    get_valid_additional_diagnosis,
 )
 
 
@@ -53,6 +55,32 @@ async def _safe_gather(*tasks: Awaitable[Any]) -> list[Any | None]:
     return clean_results
 
 
+async def _fetch_and_process_additional_diagnosis(
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        referred_data: dict[str, Any] | None
+) -> list[dict[str, str]]:
+    """
+    Получает и фильтрует дополнительные диагнозы по МКБ E10/E11 (сахарный диабет)..
+    """
+    if not referred_data:
+        logger.info("Нет данных о направлении (referred_data), пропускаем запрос доп. диагнозов.")
+        return []
+
+    evn_section_id = referred_data.get("ChildEvnSection_id")
+    if not evn_section_id:
+        logger.warning("В данных о направлении отсутствует ChildEvnSection_id, невозможно получить доп. диагнозы.")
+        return []
+
+    logger.debug(f"Запрашиваем дополнительные диагнозы для evn_section_id: {evn_section_id}")
+    additional_diagnosis_data = await fetch_additional_diagnosis(cookies, http_service, evn_section_id)
+
+    valid_additional_diagnosis = await get_valid_additional_diagnosis(additional_diagnosis_data)
+    logger.info(f"Найдено {len(valid_additional_diagnosis)} валидных доп. диагнозов по фильтру.")
+
+    return valid_additional_diagnosis
+
+
 async def enrich_data(
         enrich_request: EnrichmentRequestData,
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
@@ -77,6 +105,8 @@ async def enrich_data(
     movement_data = movement_data or {}
     referred_data = referred_data or {}
     medical_service_data = medical_service_data or []
+
+    valid_additional_diagnosis = await _fetch_and_process_additional_diagnosis(cookies, http_service, referred_data)
 
     referred_organization = await get_referred_organization(cookies, http_service, referred_data)
     disease_data = await fetch_disease_data(cookies, http_service, movement_data)
@@ -129,6 +159,7 @@ async def enrich_data(
         "input[name='IshodV012']": outcome_code,
         "input[name='HospitalizationInfoC_ZABV027']": disease_type_code,
         "input[name='ReferralHospitalizationSendingDepartment']": referred_organization,
+        "additional_diagnosis_data": valid_additional_diagnosis,
         "medical_service_data": medical_service_data,
     }
 

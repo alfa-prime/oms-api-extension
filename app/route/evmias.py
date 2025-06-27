@@ -3,7 +3,6 @@
 тестируем запросы на получение различных данных из ЕВМИАС
 """
 
-
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Body
@@ -16,7 +15,8 @@ from app.service import (
     fetch_movement_data,
     fetch_referral_data,
     fetch_referred_org_by_id,
-    fetch_medical_service_data
+    fetch_medical_service_data,
+    fetch_additional_diagnosis
 )
 
 settings = get_settings()
@@ -139,6 +139,21 @@ async def get_medical_services(
     return await fetch_medical_service_data(cookies=cookies, http_service=http_service, event_id=event_id)
 
 
+@router.get(
+    path="/additional_diagnosis/{event_id}",
+    summary="Получение сведений о дополнительных диагнозах"
+)
+async def get_additional_diagnosis(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Path(..., description="id события")
+        # diagnosis_id: str = Path(..., description="id диагноза (ChildEvnSection_id из referral_data)")
+):
+    referral_data = await fetch_referral_data(cookies=cookies, http_service=http_service, event_id=event_id)
+    diagnosis_id = referral_data.get("ChildEvnSection_id", "")
+    return await fetch_additional_diagnosis(cookies=cookies, http_service=http_service, diagnosis_id=diagnosis_id)
+
+
 @router.post("/evn_section_grid")
 async def evn_section_grid(
         cookies: Annotated[dict[str, str], Depends(set_cookies)],
@@ -254,11 +269,11 @@ async def get_event_section_by_id(
 ):
     url = settings.BASE_URL
     headers = HEADERS
-    params = {"c": "EvnSection", "m": "loadEvnSectionEditForm"}
+    params = {"c": "EvnPS", "m": "loadEvnPSEditForm"}
     data = {
-        "EvnSection_id": event_id,
+        "EvnPS_id": event_id,
         "archiveRecord": "0",
-        "attrObjects": [{"object": "EvnSectionEditWindow", "identField": "EvnSection_id"}],
+        "attrObjects": [{"object": "EvnPSEditWindow", "identField": "EvnPS_id"}],
     }
 
     response = await http_service.fetch(

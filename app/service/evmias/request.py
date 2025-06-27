@@ -4,6 +4,7 @@ from app.core.decorators import log_and_catch
 settings = get_settings()
 HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_HEADERS_REFERER_URL}
 
+
 async def _make_api_post_request(http_service: HTTPXClient, cookies: dict, params: dict, data: dict) -> dict | list:
     """Выполняет стандартный POST-запрос к API ЕМИАС и возвращает JSON-ответ."""
     response = await http_service.fetch(
@@ -186,3 +187,51 @@ async def fetch_medical_service_data(
 
     return operations_found
 
+
+def _sanitize_additional_diagnosis_entry(entry: dict) -> dict[str, str]:
+    """
+     Извлекает ключевые данные из записи о дополнительном диагнозе и возвращает
+    их в виде структурированного словаря.
+    """
+    return {
+        "code": entry.get("Diag_Code", "").strip(),
+        "name": entry.get("Diag_Name", "").strip(),
+    } if entry.get("Diag_Code") else {}
+
+
+@log_and_catch(debug=settings.DEBUG_HTTP)
+async def fetch_additional_diagnosis(
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        diagnosis_id: str
+) -> list[dict[str, str]]:
+    if not diagnosis_id:
+        logger.info("Отсутствует ID для запроса дополнительных диагнозов (diagnosis_id).")
+        return []
+
+    params = {"c": "EvnDiag", "m": "loadEvnDiagPSGrid"}
+
+    data = {
+        "class": "EvnDiagPSSect",
+        "EvnDiagPS_pid": diagnosis_id,
+    }
+
+    diagnosis_list = await _make_api_post_request(http_service, cookies, params, data)
+
+    if not isinstance(diagnosis_list, list):
+        logger.warning(f"EvnSection_id: {diagnosis_id}, API вернул не список: {type(diagnosis_list)}")
+        return []
+
+    diagnosis_found = []
+    for entry in diagnosis_list:
+        if isinstance(entry, dict):
+            sanitized_entry = _sanitize_additional_diagnosis_entry(entry)
+            if sanitized_entry:
+                diagnosis_found.append(sanitized_entry)
+
+    if diagnosis_found:
+        logger.debug(f"EvnSection_id: {diagnosis_id}, найдено доп. диагнозов: {len(diagnosis_found)}")
+    else:
+        logger.info(f"EvnSection_id: {diagnosis_id}, доп. диагнозы не найдены")
+
+    return diagnosis_found
