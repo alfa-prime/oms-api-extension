@@ -6,19 +6,19 @@ from pydantic import BaseModel, Field, constr, model_validator
 
 class ExtensionStartedData(BaseModel):
     """Модель для стартовых данных"""
-    last_name: str = Field(..., description="Фамилия пациента", examples=["Бобов"])
-    first_name: Optional[str] = Field(None, description="Имя пациента", examples=["Игорь"])
-    middle_name: Optional[str] = Field(None, description="Отчество пациента", examples=["Константинович"])
+    last_name: str = Field(..., description="Фамилия пациента", examples=["Михайлова"])
+    first_name: Optional[str] = Field(None, description="Имя пациента", examples=["Ольга"])
+    middle_name: Optional[str] = Field(None, description="Отчество пациента", examples=["Борисовна"])
     birthday: Optional[constr(pattern=r"\d{2}\.\d{2}\.\d{4}")] = Field(
         None,
         description="Дата рождения в формате DD.MM.YYYY",
-        examples=["04.02.1961"]
+        examples=["22.01.1961"]
     )
     start_date: Optional[str] = Field(None, description="Дата начала периода в формате YYYY-MM-DD", examples=[""])
     end_date: Optional[str] = Field(None, description="Дата окончания периода в формате YYYY-MM-DD", examples=[""])
     dis_date_range: Optional[str] = Field(None, description="Диапазон дат госпитализации", examples=[""])
 
-    @model_validator(mode="before")
+    @model_validator(mode="before") # noqa
     @classmethod
     def validate_and_format_date_range(cls, data: dict) -> dict:
         start_date = data.get("start_date")

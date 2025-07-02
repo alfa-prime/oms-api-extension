@@ -2,7 +2,7 @@
 Отладочные роуты для ЕВМИАС
 тестируем запросы на получение различных данных из ЕВМИАС
 """
-
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Body
@@ -42,6 +42,74 @@ async def person_by_id(
         person_id=person_id
     )
     return response
+
+
+
+# ============================ test ============================
+
+@route_handler(debug=settings.DEBUG_ROUTE)
+@router.get(
+    path="/person/grid/{person_id}",
+    summary="Получение данных о пациенте в виде таблицы",
+    description="Получение данных о пациенте в виде таблицы",
+)
+async def person_grid_by_id(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        person_id: str = Path(..., description="id пациента"),
+):
+    url = settings.BASE_URL
+    headers = HEADERS
+    params = {"c": "Person", "m": "getPersonSearchGrid", "_dc": datetime.now().timestamp()}
+    data = {
+        "Person_id": person_id,
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+    )
+
+    return response.get("json", {})
+
+
+@route_handler(debug=settings.DEBUG_ROUTE)
+@router.get(
+    path="/medical_records/{event_id}",
+    summary="Получение медицинских записей пациента",
+    description="Получение медицинских записей пациента",
+)
+async def medical_records_by_event_id(
+        cookies: Annotated[dict[str, str], Depends(set_cookies)],
+        http_service: Annotated[HTTPXClient, Depends(get_http_service)],
+        event_id: str = Path(..., description="id события"),
+):
+    url = settings.BASE_URL
+    headers = HEADERS
+    params = {"c": "EvnXml6E", "m": "loadStacEvnXmlList", "_dc": datetime.now().timestamp()}
+    data = {
+        "Evn_id": event_id,
+    }
+
+    response = await http_service.fetch(
+        url=url,
+        method="POST",
+        cookies=cookies,
+        headers=headers,
+        params=params,
+        data=data,
+    )
+
+    return response.get("json", {})
+
+
+# ============================ end test ============================
+
+
 
 
 @route_handler(debug=settings.DEBUG_ROUTE)
@@ -286,3 +354,5 @@ async def get_event_section_by_id(
     )
 
     return response.get("json", {})
+
+

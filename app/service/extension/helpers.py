@@ -211,13 +211,19 @@ async def get_disease_type_code(disease_data: dict) -> str | None:
 
 async def get_valid_additional_diagnosis(data: list) -> list[dict[str, str | Any]]:
     """
-    Фильтрует дополнительные диагнозы по МКБ E10/E11 (сахарный диабет)
+    Фильтрует дополнительные диагнозы по МКБ:
+    - E10/E11 (сахарный диабет)
+    - Cxx.x (злокачественные новообразования)
+
     Всегда возвращает список (может быть пустым).
     """
     if not data:
         return []
 
-    diagnosis_pattern = re.compile(r"^E(10|11)\.\d$")
+    # ^(...|...)$ - ищет соответствие одному из шаблонов от начала до конца строки
+    # E(10|11)\.\d - шаблон для диабета (например, E10.1, E11.9)
+    # C\d{2}\.\d   - шаблон для онкологии (например, C50.1, C18.7)
+    diagnosis_pattern = re.compile(r"^(E(10|11)\.\d|C\d{2}\.\d)$")
     valid_diagnosis = []
 
     for entry in data:
