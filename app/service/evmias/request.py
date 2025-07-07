@@ -166,7 +166,7 @@ async def fetch_operations_data(
     оказанных пациенту в рамках госпитализации, если их нет возвращается пустой список.
     """
     services = await _fetch_all_medical_services(cookies, http_service, event_id)
-    operations = filter_operations_from_services(services, event_id)
+    operations = filter_operations_from_services(services)
 
     if operations:
         logger.debug(f"event_id: {event_id}, найдено операций: {len(operations)}")

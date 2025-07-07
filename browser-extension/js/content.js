@@ -23,7 +23,7 @@ function removeInjectedElements() {
  * @param {Array<object>} operations - Массив с данными об операциях.
  * @param {Array<object>} diagnoses - Массив с данными о диагнозах.
  */
-function injectResultBlock(title, operations, diagnoses) {
+function injectResultBlock(title, operations, diagnoses, discharge) {
     removeInjectedElements();
 
     const styles = `
@@ -32,30 +32,31 @@ function injectResultBlock(title, operations, diagnoses) {
             top: 0;
             left: 0;
             width: 100%;
-            padding: 10px 15px;
-            background-color: #fbe8a6;
-            border: none;
-            border-bottom: 2px solid #9b1b30;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 12px 20px;
+            background-color: #fdf6e3;
+            border-bottom: 2px solid #cb4b16;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             z-index: 99999;
-            font-family: sans-serif;
-            color: #333;
-            border-radius: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 12px;
+            color: #586e75;
             box-sizing: border-box;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
         }
         #${CONTAINER_ID} .content-wrapper {
             flex-grow: 1;
-            max-height: 150px;
+            max-height: 250px;
             overflow-y: auto;
+            padding-right: 15px;
         }
         #${CONTAINER_ID} h3 {
-            margin: 0 0 5px 0;
+            margin: 0 0 10px 0;
             text-align: left;
-            color: #9b1b30;
+            color: #cb4b16;
             font-size: 11px;
+            text-transform: uppercase;
         }
         #${CONTAINER_ID} ul {
             list-style: none;
@@ -63,36 +64,73 @@ function injectResultBlock(title, operations, diagnoses) {
             margin: 0;
         }
         #${CONTAINER_ID} li {
-            font-size: 12px;
-            padding: 3px 0;
+            padding: 4px 0;
             display: flex;
             align-items: center;
         }
         #${CONTAINER_ID} .diagnosis-name, #${CONTAINER_ID} .operation-name {
-            margin-left: 5px;
+            margin-left: 8px;
         }
         #${CONTAINER_ID} .operation-code, #${CONTAINER_ID} .diagnosis-code {
             font-weight: bold;
             cursor: pointer;
-            padding: 2px 4px;
+            padding: 2px 5px;
             border-radius: 3px;
+            background-color: #eee8d5;
             transition: background-color 0.2s;
             user-select: none;
         }
         #${CONTAINER_ID} .operation-code:hover, #${CONTAINER_ID} .diagnosis-code:hover {
-            background-color: #e9e9e9;
+            background-color: #e0dace;
         }
         #${CONTAINER_ID} button {
             width: auto;
             margin: 0 0 0 20px;
             padding: 6px 12px;
             font-size: 12px;
-            background: #9b1b30;
+            background: #dc322f;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             flex-shrink: 0;
+            align-self: center;
+        }
+        #evmias-pure-data-container {
+            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #b58900;
+        }
+        .pure-data-item {
+            margin-bottom: 8px;
+
+            line-height: 1.4;
+        }
+        .pure-data-item strong {
+            display: block;
+            color: #268bd2;
+            margin-bottom: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .pure-table-wrapper table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px !important;
+        }
+        .pure-table-wrapper th, .pure-table-wrapper td { border: 1px solid #ddd !important; padding: 5px !important; text-align: left; }
+        .pure-table-wrapper th { background-color: #f9f9f9 !important; }
+
+        .pure-data-item .diagnos-html-content {
+            line-height: 1.4;
+            padding: 8px;
+            margin-top: 4px;
+            border-left: 3px solid #eee8d5;
+            background-color: #fdf6e3;
+        }
+        .pure-data-item .diagnos-html-content span {
+           font-size: inherit !important;
+           font-family: inherit !important;
+           color: inherit !important;
         }
     `;
     const styleSheet = document.createElement("style");
@@ -109,6 +147,7 @@ function injectResultBlock(title, operations, diagnoses) {
             <h3>${title}</h3>
             <div id="evmias-diagnoses-container"></div>
             <div id="evmias-operations-container" style="margin-top: 5px;"></div>
+            <div id="evmias-pure-data-container"></div>
         </div>
         <button id="evmias-oms-close-btn">Закрыть</button>
     `;
@@ -183,6 +222,39 @@ function injectResultBlock(title, operations, diagnoses) {
         operationsContainer.appendChild(operationsListEl);
     }
 
+    const pureContainer = container.querySelector('#evmias-pure-data-container');
+    if (discharge && Object.values(discharge).some(v => v)) {
+        let pureHtml = '';
+        if (discharge.diagnos) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <strong>Развернутый диагноз:</strong>
+                    <div class="diagnos-html-content">${discharge.diagnos}</div>
+                </div>`;
+        }
+        if (discharge.item_90) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <strong>Основной диагноз:</strong>
+                    <span>${discharge.item_90} — ${discharge.item_94 || ''}</span>
+                </div>`;
+        }
+        if (discharge.item_272) {
+            pureHtml += `<div class="pure-data-item"><strong>Клинический диагноз:</strong><span>${discharge.item_272}</span></div>`;
+        }
+        if (discharge.item_284) {
+             pureHtml += `<div class="pure-data-item"><strong>Рекомендации:</strong><span>${discharge.item_284}</span></div>`;
+        }
+        if (discharge.item_659) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <strong>Сопутствующие заболевания:</strong>
+                    <div class="pure-table-wrapper">${discharge.item_659}</div>
+                </div>`;
+        }
+        pureContainer.innerHTML = pureHtml;
+    }
+
     // --- 5. Вставляем блок в начало body ---
     document.body.prepend(container);
 
@@ -199,8 +271,8 @@ if (window.self !== window.top) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'showFinalResultInPage') {
             console.log('[Content Script] Получены данные для отображения:', message.data);
-            const { title, operations, diagnoses } = message.data;
-            injectResultBlock(title, operations, diagnoses);
+            const { title, operations, diagnoses, discharge } = message.data;
+            injectResultBlock(title, operations, diagnoses, discharge);
         }
     });
 

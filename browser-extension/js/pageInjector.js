@@ -376,25 +376,23 @@ async function injectionTargetFunction(enrichedDataForForm) {
     // --- Отправка сообщения о результате В КОНЦЕ ---
     const operations = dataMapToInsert.medical_service_data;
     const diagnoses = dataMapToInsert.additional_diagnosis_data;
+    const discharge = dataMapToInsert.discharge_summary;
 
     const hasOperations = operations && operations.length > 0;
     const hasDiagnoses = diagnoses && diagnoses.length > 0;
+    const hasDischarge = discharge && Object.values(discharge).some(v => v);
 
-    if (hasOperations || hasDiagnoses || !allElementsFound) {
+    if (hasOperations || hasDiagnoses || !allElementsFound || hasDischarge) {
       let title = "";
-      if (hasOperations && hasDiagnoses) {
-          title += "Найдены сопутствующие диагнозы и операционные услуги:";
-      } else if (hasOperations) {
-          title += "Найдены операционные услуги:";
-      } else if (hasDiagnoses) {
-          title += "Найдены сопутствующие диагнозы:";
+      if (hasOperations || hasDiagnoses || hasDischarge) {
+          title = "Найдены дополнительные данные (услуги, диагнозы, эпикриз):";
       } else {
           title = "Данные вставлены.";
       }
 
       chrome.runtime.sendMessage({
         action: 'showFinalResultInPage',
-        data: { title, operations, diagnoses } // Передаем и операции, и диагнозы
+        data: { title, operations, diagnoses, discharge: discharge } // Передаем и операции, и диагнозы
       });
     }
 

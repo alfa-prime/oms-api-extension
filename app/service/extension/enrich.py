@@ -13,6 +13,8 @@ from app.service.evmias.request import (
     fetch_disease_data,
     fetch_operations_data,
     fetch_additional_diagnosis,
+    fetch_patient_discharge_summary,
+
 )
 from app.service.extension.helpers import (
     get_referred_organization,
@@ -98,13 +100,18 @@ async def enrich_data(
         fetch_movement_data(cookies, http_service, event_id),
         fetch_referral_data(cookies, http_service, event_id),
         fetch_operations_data(cookies, http_service, event_id),
+        fetch_patient_discharge_summary(cookies, http_service, event_id),
+
     )
-    person_data, movement_data, referred_data, medical_service_data = results
+    person_data, movement_data, referred_data, medical_service_data, discharge_summary = results
 
     person_data = person_data or {}
     movement_data = movement_data or {}
     referred_data = referred_data or {}
     medical_service_data = medical_service_data or []
+    pure_discharge_summary = discharge_summary.get("pure") if discharge_summary else {}
+
+    logger.warning(f"ЭПИКРИЗ: {pure_discharge_summary}")
 
     valid_additional_diagnosis = await _fetch_and_process_additional_diagnosis(cookies, http_service, referred_data)
 
@@ -161,6 +168,7 @@ async def enrich_data(
         "input[name='ReferralHospitalizationSendingDepartment']": referred_organization,
         "additional_diagnosis_data": valid_additional_diagnosis,
         "medical_service_data": medical_service_data,
+        "discharge_summary": pure_discharge_summary,
     }
 
     return enriched_data
