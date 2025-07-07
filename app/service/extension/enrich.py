@@ -111,8 +111,6 @@ async def enrich_data(
     medical_service_data = medical_service_data or []
     pure_discharge_summary = discharge_summary.get("pure") if discharge_summary else {}
 
-    logger.warning(f"ЭПИКРИЗ: {pure_discharge_summary}")
-
     valid_additional_diagnosis = await _fetch_and_process_additional_diagnosis(cookies, http_service, referred_data)
 
     referred_organization = await get_referred_organization(cookies, http_service, referred_data)

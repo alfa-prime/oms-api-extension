@@ -1,10 +1,9 @@
-import json
 from datetime import datetime
 from typing import List, Dict, Any
 
 from app.core import get_settings, HTTPXClient, logger
 from app.core.decorators import log_and_catch
-from app.service import (
+from .helpers import (
     filter_operations_from_services,
     process_diagnosis_list,
 )
@@ -222,6 +221,7 @@ async def fetch_additional_diagnosis(
 
     return processed_diagnoses
 
+
 # ============== Конец - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
 
 
@@ -280,7 +280,6 @@ async def fetch_patient_discharge_summary(
 ):
     event_section_id = await _get_event_section_id_for_fetching_medical_records(cookies, http_service, event_id)
     medical_records_list = await _fetch_medical_records(cookies, http_service, event_section_id)
-    logger.debug(print(json.dumps(medical_records_list, indent=4, ensure_ascii=False)))
     discharge_summary_ids = await _get_discharge_summary(medical_records_list)
     sanitized_discharge_summary_ids = await _sanitize_discharge_summary(discharge_summary_ids)
 
