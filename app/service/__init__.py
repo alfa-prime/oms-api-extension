@@ -1,12 +1,19 @@
 from .cookie.cookie import set_cookies
+from .evmias.assest import (
+    sanitize_medical_service_entry,
+    filter_operations_from_services,
+    process_diagnosis_list,
+)
+
 from .evmias.request import (
     fetch_person_data,
     fetch_movement_data,
     fetch_referral_data,
     fetch_disease_data,
     fetch_referred_org_by_id,
-    fetch_medical_service_data,
+    fetch_operations_data,
     fetch_additional_diagnosis,
+    fetch_patient_discharge_summary,
 )
 from .extension.enrich import enrich_data
 from .extension.helpers import (
@@ -25,6 +32,9 @@ from .extension.helpers import (
 from .extension.started import fetch_started_data
 
 __all__ = [
+    "sanitize_medical_service_entry",
+    "filter_operations_from_services",
+    "process_diagnosis_list",
     "set_cookies",
     "get_referred_organization",
     "get_medical_care_condition",
@@ -43,7 +53,8 @@ __all__ = [
     "fetch_disease_data",
     "fetch_referred_org_by_id",
     "fetch_started_data",
-    "fetch_medical_service_data",
+    "fetch_operations_data",
     "fetch_additional_diagnosis",
+    "fetch_patient_discharge_summary",
     "enrich_data",
 ]

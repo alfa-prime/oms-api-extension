@@ -11,7 +11,7 @@ from app.service.evmias.request import (
     fetch_movement_data,
     fetch_referral_data,
     fetch_disease_data,
-    fetch_medical_service_data,
+    fetch_operations_data,
     fetch_additional_diagnosis,
 )
 from app.service.extension.helpers import (
@@ -97,7 +97,7 @@ async def enrich_data(
         fetch_person_data(cookies, http_service, person_id),
         fetch_movement_data(cookies, http_service, event_id),
         fetch_referral_data(cookies, http_service, event_id),
-        fetch_medical_service_data(cookies, http_service, event_id)
+        fetch_operations_data(cookies, http_service, event_id),
     )
     person_data, movement_data, referred_data, medical_service_data = results
 
