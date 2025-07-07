@@ -121,3 +121,112 @@ li {
         transform: rotate(360deg);
     }
 }
+
+#evmias-oms-result-container {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 12px 20px;
+    background-color: #fdf6e3;
+    border-bottom: 2px solid #cb4b16;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 99999;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+    color: #586e75;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+#evmias-oms-result-container .content-wrapper {
+    flex-grow: 1;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 15px;
+}
+#evmias-oms-result-container h3 {
+    margin: 0 0 10px 0;
+    text-align: left;
+    color: #cb4b16;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+#evmias-oms-result-container ul {
+    list-style: none;
+    padding-left: 0 !important;
+    margin: 0;
+}
+#evmias-oms-result-container li {
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+}
+#evmias-oms-result-container .diagnosis-name, #evmias-oms-result-container .operation-name {
+    margin-left: 8px;
+}
+#evmias-oms-result-container .operation-code, #evmias-oms-result-container .diagnosis-code {
+    font-weight: bold;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background-color: #eee8d5;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+#evmias-oms-result-container .operation-code:hover, #evmias-oms-result-container .diagnosis-code:hover {
+    background-color: #e0dace;
+}
+#evmias-oms-result-container button {
+    width: auto;
+    margin: 0 0 0 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    background: #dc322f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    align-self: center;
+}
+#evmias-pure-data-container {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed #b58900;
+}
+.pure-data-item {
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+.pure-data-item strong {
+    display: block;
+    color: #268bd2;
+    margin-bottom: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.pure-table-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px !important;
+}
+.pure-table-wrapper th, .pure-table-wrapper td {
+    border: 1px solid #ddd !important;
+    padding: 5px !important;
+    text-align: left;
+}
+.pure-table-wrapper th { background-color: #f9f9f9 !important; }
+
+.pure-data-item .diagnos-html-content {
+    line-height: 1.4;
+    padding: 8px;
+    margin-top: 4px;
+    border-left: 3px solid #eee8d5;
+    background-color: #fdf6e3;
+}
+.pure-data-item .diagnos-html-content span {
+    font-size: inherit !important;
+    font-family: inherit !important;
+    color: inherit !important;
+}

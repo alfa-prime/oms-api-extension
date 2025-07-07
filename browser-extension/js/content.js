@@ -3,9 +3,6 @@
 const CONTAINER_ID = 'evmias-oms-result-container';
 const STYLE_ID = 'evmias-oms-result-styles';
 
-/**
- * Функция для удаления нашей панели и стилей.
- */
 function removeInjectedElements() {
     const container = document.getElementById(CONTAINER_ID);
     if (container) {
@@ -25,120 +22,6 @@ function removeInjectedElements() {
  */
 function injectResultBlock(title, operations, diagnoses, discharge) {
     removeInjectedElements();
-
-    const styles = `
-        #${CONTAINER_ID} {
-            position: sticky;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 12px 20px;
-            background-color: #fdf6e3;
-            border-bottom: 2px solid #cb4b16;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            z-index: 99999;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 12px;
-            color: #586e75;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        #${CONTAINER_ID} .content-wrapper {
-            flex-grow: 1;
-            max-height: 250px;
-            overflow-y: auto;
-            padding-right: 15px;
-        }
-        #${CONTAINER_ID} h3 {
-            margin: 0 0 10px 0;
-            text-align: left;
-            color: #cb4b16;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-        #${CONTAINER_ID} ul {
-            list-style: none;
-            padding-left: 0 !important;
-            margin: 0;
-        }
-        #${CONTAINER_ID} li {
-            padding: 4px 0;
-            display: flex;
-            align-items: center;
-        }
-        #${CONTAINER_ID} .diagnosis-name, #${CONTAINER_ID} .operation-name {
-            margin-left: 8px;
-        }
-        #${CONTAINER_ID} .operation-code, #${CONTAINER_ID} .diagnosis-code {
-            font-weight: bold;
-            cursor: pointer;
-            padding: 2px 5px;
-            border-radius: 3px;
-            background-color: #eee8d5;
-            transition: background-color 0.2s;
-            user-select: none;
-        }
-        #${CONTAINER_ID} .operation-code:hover, #${CONTAINER_ID} .diagnosis-code:hover {
-            background-color: #e0dace;
-        }
-        #${CONTAINER_ID} button {
-            width: auto;
-            margin: 0 0 0 20px;
-            padding: 6px 12px;
-            font-size: 12px;
-            background: #dc322f;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            flex-shrink: 0;
-            align-self: center;
-        }
-        #evmias-pure-data-container {
-            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #b58900;
-        }
-        .pure-data-item {
-            margin-bottom: 8px;
-
-            line-height: 1.4;
-        }
-        .pure-data-item strong {
-            display: block;
-            color: #268bd2;
-            margin-bottom: 3px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .pure-table-wrapper table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px !important;
-        }
-        .pure-table-wrapper th, .pure-table-wrapper td { border: 1px solid #ddd !important; padding: 5px !important; text-align: left; }
-        .pure-table-wrapper th { background-color: #f9f9f9 !important; }
-
-        .pure-data-item .diagnos-html-content {
-            line-height: 1.4;
-            padding: 8px;
-            margin-top: 4px;
-            border-left: 3px solid #eee8d5;
-            background-color: #fdf6e3;
-        }
-        .pure-data-item .diagnos-html-content span {
-           font-size: inherit !important;
-           font-family: inherit !important;
-           color: inherit !important;
-        }
-    `;
-    const styleSheet = document.createElement("style");
-    styleSheet.id = STYLE_ID;
-    styleSheet.innerText = styles;
-    document.head.appendChild(styleSheet);
-
-    // --- 3. Создаем HTML-содержимое ---
     const container = document.createElement('div');
     container.id = CONTAINER_ID;
 
@@ -156,7 +39,7 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
     const diagnosesContainer = container.querySelector('#evmias-diagnoses-container');
     if (diagnoses && diagnoses.length > 0) {
         const listEl = document.createElement('ul');
-        diagnoses.forEach(diag => { /* ... код создания списка диагнозов ... */
+        diagnoses.forEach(diag => {
             const li = document.createElement('li');
             const codeSpan = document.createElement('span');
             codeSpan.className = 'diagnosis-code';
@@ -191,7 +74,7 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
     const operationsContainer = container.querySelector('#evmias-operations-container');
     if (operations && operations.length > 0) {
         const operationsListEl = document.createElement('ul');
-        operations.forEach(op => { /* ... код создания списка операций ... */
+        operations.forEach(op => {
             const li = document.createElement('li');
             const codeSpan = document.createElement('span');
             codeSpan.className = 'operation-code';
@@ -255,19 +138,15 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
         pureContainer.innerHTML = pureHtml;
     }
 
-    // --- 5. Вставляем блок в начало body ---
     document.body.prepend(container);
-
     container.querySelector('#evmias-oms-close-btn').addEventListener('click', removeInjectedElements);
 }
 
 
-// --- Основная логика Content Script ---
 
 if (window.self !== window.top) {
     console.log('✅ [Content Script] Запущен внутри iframe и готов получать сообщения.');
 
-    // Слушаем сообщения от background.js
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'showFinalResultInPage') {
             console.log('[Content Script] Получены данные для отображения:', message.data);
@@ -296,7 +175,6 @@ if (window.self !== window.top) {
         }
     });
 
-    // Начинаем наблюдение за изменениями в body iframe
     nativeButtonObserver.observe(document.body, { childList: true, subtree: true });
 }
 
