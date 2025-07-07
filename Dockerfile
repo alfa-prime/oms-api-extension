@@ -10,7 +10,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Копируем только requirements.txt для кэширования
-WORKDIR /app
+WORKDIR /code
 COPY requirements.txt .
 
 # Устанавливаем зависимости в venv
@@ -35,10 +35,10 @@ ENV LANG=ru_RU.UTF-8 \
 COPY --from=builder /opt/venv /opt/venv
 
 # Устанавливаем рабочую директорию
-WORKDIR /app
+WORKDIR /code
 
 # Копируем код приложения
-COPY ./app /app/app
+COPY ./app /code/app
 
 # Указываем PATH на venv, чтобы система знала, где искать uvicorn
 ENV PATH="/opt/venv/bin:$PATH"

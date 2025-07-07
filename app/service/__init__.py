@@ -1,5 +1,5 @@
 from .cookie.cookie import set_cookies
-from .evmias.assest import (
+from .evmias.helpers import (
     sanitize_medical_service_entry,
     filter_operations_from_services,
     process_diagnosis_list,
