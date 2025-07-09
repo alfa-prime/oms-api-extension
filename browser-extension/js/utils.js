@@ -1,4 +1,3 @@
-// browser-extension/js/utils.js
 
 /**
  * Утилиты, не связанные напрямую с UI.
