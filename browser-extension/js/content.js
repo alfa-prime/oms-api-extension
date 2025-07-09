@@ -70,7 +70,6 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
         diagnosesContainer.appendChild(listEl);
     }
 
-    // --- Логика для операций  ---
     const operationsContainer = container.querySelector('#evmias-operations-container');
     if (operations && operations.length > 0) {
         const operationsListEl = document.createElement('ul');
@@ -111,22 +110,27 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
         if (discharge.diagnos) {
             pureHtml += `
                 <div class="pure-data-item">
-                    <strong>Развернутый диагноз:</strong>
                     <div class="diagnos-html-content">${discharge.diagnos}</div>
                 </div>`;
         }
         if (discharge.item_90) {
             pureHtml += `
                 <div class="pure-data-item">
-                    <strong>Основной диагноз:</strong>
+                    <strong>Основное заболевание:</strong>
                     <span>${discharge.item_90} — ${discharge.item_94 || ''}</span>
                 </div>`;
         }
         if (discharge.item_272) {
-            pureHtml += `<div class="pure-data-item"><strong>Клинический диагноз:</strong><span>${discharge.item_272}</span></div>`;
+            pureHtml += `
+                <div class="pure-data-item">
+                    <span>${discharge.item_272}</span>
+                </div>`;
         }
         if (discharge.item_284) {
-             pureHtml += `<div class="pure-data-item"><strong>Рекомендации:</strong><span>${discharge.item_284}</span></div>`;
+             pureHtml += `
+                <div class="pure-data-item">
+                    <span>${discharge.item_284}</span>
+                </div>`;
         }
         if (discharge.item_659) {
             pureHtml += `
@@ -135,14 +139,18 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
                     <div class="pure-table-wrapper">${discharge.item_659}</div>
                 </div>`;
         }
+        if (discharge.template) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <strong>Сопутствующие заболевания:</strong>
+                    <div class="pure-table-wrapper">${discharge.template}</div>
+                </div>`;
+        }
         pureContainer.innerHTML = pureHtml;
     }
-
     document.body.prepend(container);
     container.querySelector('#evmias-oms-close-btn').addEventListener('click', removeInjectedElements);
 }
-
-
 
 if (window.self !== window.top) {
     console.log('✅ [Content Script] Запущен внутри iframe и готов получать сообщения.');

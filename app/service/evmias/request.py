@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import List, Dict, Any
 
@@ -221,7 +222,6 @@ async def fetch_additional_diagnosis(
 
     return processed_diagnoses
 
-
 # ============== Конец - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
 
 
@@ -297,6 +297,14 @@ async def fetch_patient_discharge_summary(
     item_284 = raw_xml_data.get("specMarker_284", None)
     item_659 = raw_xml_data.get("specMarker_659", None)
 
+    # ======== Сопутствующие заболевания вариант получения из ключа template (эксперимент)
+
+    template_raw = discharge_summary_raw_data.get("template", "")
+    regex = r"Сопутствующие заболевания:\s*<br>\s*(.*?)(?=<\/)"
+
+    match = re.search(regex, template_raw, re.DOTALL)
+    extracted_text = match.group(1).strip() if match else None
+
     result = {
         "pure": {
             "diagnos": diagnos,
@@ -305,6 +313,7 @@ async def fetch_patient_discharge_summary(
             "item_272": item_272,
             "item_284": item_284,
             "item_659": item_659,
+            "template": extracted_text,
         },
         "raw": discharge_summary_raw_data,
     }
