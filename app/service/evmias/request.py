@@ -227,138 +227,94 @@ async def fetch_additional_diagnosis(
 # ============== Конец - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
 
 
-# получаем выписной эпикриз - алгоритм получения сложный (многоступенчатый)
-# все функции оркестрируются в fetch_patient_discharge_summary
-
-
-async def _get_event_section_id_for_fetching_medical_records(
-    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
-):
+@log_and_catch(debug=settings.DEBUG_HTTP)
+async def fetch_patient_discharge_summary(
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        event_id: str,
+) -> Dict[str, Any] | None:
     """
-    Шаг 1.
-    Получаем id раздела события для запроса списка медицинских записей.
+    Выполняет многоступенчатый процесс получения и обработки данных из выписного эпикриза.
     """
+    logger.info(f"Начинаем получать данные из выписного эпикриза для event_id: {event_id}")
+
+    # ===== Шаг 1. Получаем id раздела события для запроса списка медицинских записей =====================
     params = {"c": "EvnSection", "m": "loadEvnSectionGrid"}
     data = {"EvnSection_pid": event_id}
+    section_data = await _make_api_post_request(cookies, http_service, params, data)
 
-    data = await _make_api_post_request(cookies, http_service, params, data)
-    return data[0].get("EvnSection_id", "")
+    if section_data and isinstance(section_data, list):
+        event_section_id = section_data[0].get("EvnSection_id", "")
+    else:
+        event_section_id = None
 
+    if not event_section_id:
+        logger.warning(f"Не удалось получить EvnSection_id для event_id: {event_id}. Поиск эпикриза прерван.")
+        return None
+    logger.debug(f"Шаг 1/5: Получен EvnSection_id: {event_section_id}")
 
-async def _fetch_medical_records(
-    cookies: dict[str, str], http_service: HTTPXClient, event_section_id: str
-):
-    """
-    Шаг 2.
-    Получаем список медицинских записей пациента по госпитализации
-    """
-    params = {
-        "c": "EvnXml6E",
-        "m": "loadStacEvnXmlList",
-        "_dc": datetime.now().timestamp(),
-    }
+    # ===== Шаг 2. Получаем список медицинских записей пациента в рамках госпитализации =====================
+    params = {"c": "EvnXml6E", "m": "loadStacEvnXmlList", "_dc": datetime.now().timestamp()}
     data = {"Evn_id": event_section_id}
-    return await _make_api_post_request(cookies, http_service, params, data)
+    medical_records = await _make_api_post_request(cookies, http_service, params, data)
 
+    if not isinstance(medical_records, list):
+        logger.warning(f"API вернул не список медицинских записей: {type(medical_records)}. Поиск эпикриза прерван.")
+        return None
+    logger.debug(f"Шаг 2/5: Получено {len(medical_records)} медицинских записей")
 
-async def _get_discharge_summary(data: list[dict]) -> dict | None:
-    """
-    Шаг 3.
-    Получаем из списка медицинских записей непосредственно сам выписной эпикриз
-    """
-    for entry in data:
-        if (entry.get("XmlType_Name") == "Эпикриз") and (
-            entry.get("XmlTypeKind_Name") == "Выписной"
-        ):
-            return entry
-    return None
+    # ===== Шаг 3. Получаем из списка медицинских записей непосредственно сам выписной эпикриз =====================
+    discharge_summary_entry = None
+    for entry in medical_records:
+        if (entry.get("XmlType_Name") == "Эпикриз") and (entry.get("XmlTypeKind_Name") == "Выписной"):
+            discharge_summary_entry = entry
+            break
 
+    if not discharge_summary_entry:
+        logger.info(f"Не удалось найти выписной эпикриз для event_id: {event_id} среди {len(medical_records)} записей.")
+        return None
+    logger.debug("Шаг 3/5: Найден выписной эпикриз")
 
-async def _sanitize_discharge_summary_ids(entry: dict) -> Dict[str, str]:
-    """
-    Шаг 4.
-    Забираем только необходимые id для запроса на получение сырых данных из выписного эпикриза
-    """
-    return {
-        "Evn_id": entry.get("EvnXml_pid", ""),
-        "EvnXml_id": entry.get("EMDRegistry_ObjectID", ""),
+    # ===== Шаг 4. Получаем 'сырые' данные выписного эпикриза =====================
+    params = {"c": "XmlTemplate6E", "m": "getXmlTemplateForEvnXml", "_dc": datetime.now().timestamp()}
+    data = {
+        "Evn_id": discharge_summary_entry.get("EvnXml_pid", ""),
+        "EvnXml_id": discharge_summary_entry.get("EMDRegistry_ObjectID", ""),
     }
 
+    if not all(data.values()):
+        logger.warning(f"В записи эпикриза отсутствуют необходимые id: {data}. Поиск эпикриза прерван.")
+        return None
 
-async def _fetch_discharge_summary_raw_data(
-    cookies: dict[str, str],
-    http_service: HTTPXClient,
-    event_section_id: str,
-    sanitized_discharge_summary_ids: dict,
-):
-    """
-    Шаг 5.
-    Получаем сырые данные из выписного эпикриза
-    """
-    params = {
-        "c": "XmlTemplate6E",
-        "m": "getXmlTemplateForEvnXml",
-        "_dc": datetime.now().timestamp(),
-    }
-    data = {"Evn_id": event_section_id}
-    data.update(sanitized_discharge_summary_ids)
-    return await _make_api_post_request(cookies, http_service, params, data)
+    raw_discharge_summary_data = await _make_api_post_request(cookies, http_service, params, data)
+    if not isinstance(raw_discharge_summary_data, dict) or "xmlData" not in raw_discharge_summary_data:
+        logger.warning(f"Получены некорректные сырые данные для эпикриза: {raw_discharge_summary_data}.")
+        return None
+    logger.debug(f"Шаг 4/5: Получены сырые данные для выписного эпикриза.")
 
+    # ===== Шаг 5. Извлекаем и структурируем необходимые данные по выписному эпикризу =====================
+    xml_data = raw_discharge_summary_data.get("xmlData", {})
+    template_raw = raw_discharge_summary_data.get("template", "")
 
-async def _sanitize_discharge_summary_data(
-    discharge_summary_raw_data: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Шаг 6.
-    Получение всех возможных данных по выписному эпикризу.
-    """
-    raw_xml_data = discharge_summary_raw_data.get("xmlData", {})
+    pattern = r"Сопутствующие заболевания:\s*<br>\s*(.*?)(?=<\/)"
+    concomitant_match = re.search(pattern, template_raw, re.DOTALL)
 
-    diagnos = raw_xml_data.get("diagnos", None)
-    item_90 = raw_xml_data.get("specMarker_90", None)
-    item_94 = raw_xml_data.get("specMarker_94", None)
-    item_272 = raw_xml_data.get("specMarker_272", None)
-    item_284 = raw_xml_data.get("specMarker_284", None)
-    item_659 = raw_xml_data.get("specMarker_659", None)
-
-    # ======== Сопутствующие заболевания вариант получения из ключа template (эксперимент)
-    template_raw = discharge_summary_raw_data.get("template", "")
-
-    regex = r"Сопутствующие заболевания:\s*<br>\s*(.*?)(?=<\/)"
-    match = re.search(regex, template_raw, re.DOTALL)
-    concomitant_diseases = match.group(1).strip() if match else None
-
-    regex = r"Осложнения основного заболевания:\s*(.*?)(?=<\/)"
-    match = re.search(regex, template_raw, re.DOTALL)
-    primary_complication = match.group(1).strip() if match else None
+    pattern = r"Осложнения основного заболевания:\s*(.*?)(?=<\/)"
+    complication_match = re.search(pattern, template_raw, re.DOTALL)
 
     result = {
         "pure": {
-            "diagnos": diagnos,
-            "item_90": item_90,
-            "item_94": item_94,
-            "item_272": item_272,
-            "item_284": item_284,
-            "item_659": item_659,
-            "concomitant_diseases": concomitant_diseases,
-            "primary_complication": primary_complication,
+            "diagnos": xml_data.get("diagnos"),
+            "item_90": xml_data.get("specMarker_90"),
+            "item_94": xml_data.get("specMarker_94"),
+            "item_272": xml_data.get("specMarker_272"),
+            "item_284": xml_data.get("specMarker_284"),
+            "item_659": xml_data.get("specMarker_659"),
+            "concomitant_diseases": concomitant_match.group(1).strip() if concomitant_match else None,
+            "primary_complication": complication_match.group(1).strip() if complication_match else None,
         },
-        "raw": discharge_summary_raw_data,
+        "raw": raw_discharge_summary_data,
     }
+
+    logger.info(f"Шаг 5/5: Эпикриз успешно обработан для event_id: {event_id}.")
     return result
-
-
-async def fetch_patient_discharge_summary(
-    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
-):
-    event_section_id = await _get_event_section_id_for_fetching_medical_records(cookies, http_service, event_id)
-    medical_records_list = await _fetch_medical_records(cookies, http_service, event_section_id)
-    discharge_summary_ids = await _get_discharge_summary(medical_records_list)
-    sanitized_discharge_summary_ids = await _sanitize_discharge_summary_ids(discharge_summary_ids)
-    discharge_summary_raw_data = await _fetch_discharge_summary_raw_data(
-        cookies, http_service,
-        event_section_id,
-        sanitized_discharge_summary_ids
-    )
-    discharge_summary = await _sanitize_discharge_summary_data(discharge_summary_raw_data)
-    return discharge_summary
