@@ -10,10 +10,15 @@ from .helpers import (
 )
 
 settings = get_settings()
-HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_HEADERS_REFERER_URL}
+HEADERS = {
+    "Origin": settings.BASE_HEADERS_ORIGIN_URL,
+    "Referer": settings.BASE_HEADERS_REFERER_URL,
+}
 
 
-async def _make_api_post_request(cookies: dict, http_service: HTTPXClient, params: dict, data: dict) -> dict | list:
+async def _make_api_post_request(
+    cookies: dict, http_service: HTTPXClient, params: dict, data: dict
+) -> dict | list:
     """
     Выполняет стандартный POST-запрос к API ЕМИАС и возвращает JSON-ответ.
     """
@@ -31,19 +36,13 @@ async def _make_api_post_request(cookies: dict, http_service: HTTPXClient, param
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_person_data(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        person_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, person_id: str
 ) -> dict:
     """
     Загружает основные данные о пациенте по его ID.
     """
     params = {"c": "Common", "m": "loadPersonData"}
-    data = {
-        "Person_id": person_id,
-        "LoadShort": True,
-        "mode": "PersonInfoPanel"
-    }
+    data = {"Person_id": person_id, "LoadShort": True, "mode": "PersonInfoPanel"}
 
     response_json = await _make_api_post_request(cookies, http_service, params, data)
     return response_json[0] if isinstance(response_json, list) and response_json else {}
@@ -51,9 +50,7 @@ async def fetch_person_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_movement_data(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> dict:
     """
     Загружает данные о движении пациента в рамках случая госпитализации.
@@ -69,9 +66,7 @@ async def fetch_movement_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_referral_data(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> dict:
     """
     Загружает данные о направлении на госпитализацию.
@@ -90,9 +85,9 @@ async def fetch_referral_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_disease_data(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        data: dict,
+    cookies: dict[str, str],
+    http_service: HTTPXClient,
+    data: dict,
 ) -> dict:
     """
     Загружает данные о заболевании из раздела случая госпитализации.
@@ -103,7 +98,9 @@ async def fetch_disease_data(
     data = {
         "EvnSection_id": event_section_id,
         "archiveRecord": "0",
-        "attrObjects": [{"object": "EvnSectionEditWindow", "identField": "EvnSection_id"}],
+        "attrObjects": [
+            {"object": "EvnSectionEditWindow", "identField": "EvnSection_id"}
+        ],
     }
 
     response_json = await _make_api_post_request(cookies, http_service, params, data)
@@ -117,13 +114,11 @@ async def fetch_disease_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_referred_org_by_id(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        org_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, org_id: str
 ) -> dict:
     """
-   Получает информацию о направившей организации по её ID.
-   """
+    Получает информацию о направившей организации по её ID.
+    """
     params = {"c": "Org", "m": "getOrgList"}
     data = {
         "Org_id": org_id,
@@ -135,10 +130,9 @@ async def fetch_referred_org_by_id(
 
 # ============== Начало - Получаем только операции (если они есть) из списка оказанных услуг ==============
 
+
 async def _fetch_all_medical_services(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> List[Dict[str, Any]]:
     """
     Получает список ВСЕХ оказанных услуг в рамках случая госпитализации.
@@ -149,7 +143,9 @@ async def _fetch_all_medical_services(
     services = await _make_api_post_request(cookies, http_service, params, data)
 
     if not isinstance(services, list):
-        logger.warning(f"event_id: {event_id}, API услуг вернул не список: {type(services)}")
+        logger.warning(
+            f"event_id: {event_id}, API услуг вернул не список: {type(services)}"
+        )
         return []
 
     return services
@@ -157,9 +153,7 @@ async def _fetch_all_medical_services(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_operations_data(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> list[dict[str, str]]:
     """
     Находит и возвращает список операций среди всех услуг,
@@ -171,7 +165,9 @@ async def fetch_operations_data(
     if operations:
         logger.debug(f"event_id: {event_id}, найдено операций: {len(operations)}")
     else:
-        logger.warning(f"event_id: {event_id}, операции не найдены в списке из {len(services)} услуг.")
+        logger.warning(
+            f"event_id: {event_id}, операции не найдены в списке из {len(services)} услуг."
+        )
 
     return operations
 
@@ -180,10 +176,9 @@ async def fetch_operations_data(
 
 # ============== Начало - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
 
+
 async def _fetch_raw_diagnosis_list(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        diagnosis_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
 ) -> List[Dict[str, str]]:
     """
     Получает "сырой" список диагнозов от API.
@@ -193,30 +188,36 @@ async def _fetch_raw_diagnosis_list(
     diagnosis_list = await _make_api_post_request(cookies, http_service, params, data)
 
     if not isinstance(diagnosis_list, list):
-        logger.warning(f"EvnSection_id: {diagnosis_id}, API вернул не список: {type(diagnosis_list)}")
+        logger.warning(
+            f"EvnSection_id: {diagnosis_id}, API вернул не список: {type(diagnosis_list)}"
+        )
         return []
     return diagnosis_list
 
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_additional_diagnosis(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        diagnosis_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
 ) -> list[dict[str, str]]:
     """
     Получает список дополнительных диагнозов из движения в ЕВМИАС, если они есть,
     и возвращает их в виде списка словарей.
     """
     if not diagnosis_id:
-        logger.info("Отсутствует ID для запроса дополнительных диагнозов (diagnosis_id).")
+        logger.info(
+            "Отсутствует ID для запроса дополнительных диагнозов (diagnosis_id)."
+        )
         return []
 
-    raw_diagnosis_list = await _fetch_raw_diagnosis_list(cookies, http_service, diagnosis_id)
+    raw_diagnosis_list = await _fetch_raw_diagnosis_list(
+        cookies, http_service, diagnosis_id
+    )
     processed_diagnoses = process_diagnosis_list(raw_diagnosis_list)
 
     if processed_diagnoses:
-        logger.debug(f"EvnSection_id: {diagnosis_id}, найдено доп. диагнозов: {len(processed_diagnoses)}")
+        logger.debug(
+            f"EvnSection_id: {diagnosis_id}, найдено доп. диагнозов: {len(processed_diagnoses)}"
+        )
     else:
         logger.info(f"EvnSection_id: {diagnosis_id}, доп. диагнозы не найдены")
 
@@ -229,10 +230,9 @@ async def fetch_additional_diagnosis(
 # получаем выписной эпикриз - алгоритм получения сложный (многоступенчатый)
 # все функции оркестрируются в fetch_patient_discharge_summary
 
+
 async def _get_event_section_id_for_fetching_medical_records(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ):
     """
     Шаг 1.
@@ -246,15 +246,17 @@ async def _get_event_section_id_for_fetching_medical_records(
 
 
 async def _fetch_medical_records(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_section_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_section_id: str
 ):
     """
     Шаг 2.
     Получаем список медицинских записей пациента по госпитализации
     """
-    params = {"c": "EvnXml6E", "m": "loadStacEvnXmlList", "_dc": datetime.now().timestamp()}
+    params = {
+        "c": "EvnXml6E",
+        "m": "loadStacEvnXmlList",
+        "_dc": datetime.now().timestamp(),
+    }
     data = {"Evn_id": event_section_id}
     return await _make_api_post_request(cookies, http_service, params, data)
 
@@ -265,7 +267,9 @@ async def _get_discharge_summary(data: list[dict]) -> dict | None:
     Получаем из списка медицинских записей непосредственно сам выписной эпикриз
     """
     for entry in data:
-        if (entry.get("XmlType_Name") == "Эпикриз") and (entry.get("XmlTypeKind_Name") == "Выписной"):
+        if (entry.get("XmlType_Name") == "Эпикриз") and (
+            entry.get("XmlTypeKind_Name") == "Выписной"
+        ):
             return entry
     return None
 
@@ -282,22 +286,28 @@ async def _sanitize_discharge_summary_ids(entry: dict) -> Dict[str, str]:
 
 
 async def _fetch_discharge_summary_raw_data(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_section_id: str,
-        sanitized_discharge_summary_ids: dict
+    cookies: dict[str, str],
+    http_service: HTTPXClient,
+    event_section_id: str,
+    sanitized_discharge_summary_ids: dict,
 ):
     """
     Шаг 5.
     Получаем сырые данные из выписного эпикриза
     """
-    params = {"c": "XmlTemplate6E", "m": "getXmlTemplateForEvnXml", "_dc": datetime.now().timestamp()}
+    params = {
+        "c": "XmlTemplate6E",
+        "m": "getXmlTemplateForEvnXml",
+        "_dc": datetime.now().timestamp(),
+    }
     data = {"Evn_id": event_section_id}
     data.update(sanitized_discharge_summary_ids)
     return await _make_api_post_request(cookies, http_service, params, data)
 
 
-async def _sanitize_discharge_summary_data(discharge_summary_raw_data: Dict[str, Any]) -> Dict[str, Any]:
+async def _sanitize_discharge_summary_data(
+    discharge_summary_raw_data: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Шаг 6.
     Получение всех возможных данных по выписному эпикризу.
@@ -339,9 +349,7 @@ async def _sanitize_discharge_summary_data(discharge_summary_raw_data: Dict[str,
 
 
 async def fetch_patient_discharge_summary(
-        cookies: dict[str, str],
-        http_service: HTTPXClient,
-        event_id: str
+    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ):
     event_section_id = await _get_event_section_id_for_fetching_medical_records(cookies, http_service, event_id)
     medical_records_list = await _fetch_medical_records(cookies, http_service, event_section_id)
