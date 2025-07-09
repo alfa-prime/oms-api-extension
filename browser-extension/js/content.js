@@ -139,11 +139,18 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
                     <div class="pure-table-wrapper">${discharge.item_659}</div>
                 </div>`;
         }
-        if (discharge.template) {
+        if (discharge.concomitant_diseases) {
             pureHtml += `
                 <div class="pure-data-item">
                     <strong>Сопутствующие заболевания:</strong>
-                    <div class="pure-table-wrapper">${discharge.template}</div>
+                    <div class="pure-table-wrapper">${discharge.concomitant_diseases}</div>
+                </div>`;
+        }
+        if (discharge.primary_complication) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <strong>Осложнения основного заболевания:</strong>
+                    <div class="pure-table-wrapper">${discharge.primary_complication}</div>
                 </div>`;
         }
         pureContainer.innerHTML = pureHtml;

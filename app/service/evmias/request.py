@@ -13,7 +13,7 @@ settings = get_settings()
 HEADERS = {"Origin": settings.BASE_HEADERS_ORIGIN_URL, "Referer": settings.BASE_HEADERS_REFERER_URL}
 
 
-async def _make_api_post_request(http_service: HTTPXClient, cookies: dict, params: dict, data: dict) -> dict | list:
+async def _make_api_post_request(cookies: dict, http_service: HTTPXClient, params: dict, data: dict) -> dict | list:
     """
     Выполняет стандартный POST-запрос к API ЕМИАС и возвращает JSON-ответ.
     """
@@ -45,7 +45,7 @@ async def fetch_person_data(
         "mode": "PersonInfoPanel"
     }
 
-    response_json = await _make_api_post_request(http_service, cookies, params, data)
+    response_json = await _make_api_post_request(cookies, http_service, params, data)
     return response_json[0] if isinstance(response_json, list) and response_json else {}
 
 
@@ -63,7 +63,7 @@ async def fetch_movement_data(
         "EvnSection_pid": event_id,
     }
 
-    response_json = await _make_api_post_request(http_service, cookies, params, data)
+    response_json = await _make_api_post_request(cookies, http_service, params, data)
     return response_json[0] if isinstance(response_json, list) and response_json else {}
 
 
@@ -84,7 +84,7 @@ async def fetch_referral_data(
         "attrObjects": [{"object": "EvnPSEditWindow", "identField": "EvnPS_id"}],
     }
 
-    response_json = await _make_api_post_request(http_service, cookies, params, data)
+    response_json = await _make_api_post_request(cookies, http_service, params, data)
     return response_json[0] if isinstance(response_json, list) and response_json else {}
 
 
@@ -106,7 +106,7 @@ async def fetch_disease_data(
         "attrObjects": [{"object": "EvnSectionEditWindow", "identField": "EvnSection_id"}],
     }
 
-    response_json = await _make_api_post_request(http_service, cookies, params, data)
+    response_json = await _make_api_post_request(cookies, http_service, params, data)
 
     if not isinstance(response_json, dict):
         return {}
@@ -129,7 +129,7 @@ async def fetch_referred_org_by_id(
         "Org_id": org_id,
     }
 
-    response_json = await _make_api_post_request(http_service, cookies, params, data)
+    response_json = await _make_api_post_request(cookies, http_service, params, data)
     return response_json[0] if isinstance(response_json, list) and response_json else {}
 
 
@@ -146,7 +146,7 @@ async def _fetch_all_medical_services(
     params = {"c": "EvnUsluga", "m": "loadEvnUslugaGrid"}
     data = {"pid": event_id, "parent": "EvnPS"}
 
-    services = await _make_api_post_request(http_service, cookies, params, data)
+    services = await _make_api_post_request(cookies, http_service, params, data)
 
     if not isinstance(services, list):
         logger.warning(f"event_id: {event_id}, API услуг вернул не список: {type(services)}")
@@ -190,7 +190,7 @@ async def _fetch_raw_diagnosis_list(
     """
     params = {"c": "EvnDiag", "m": "loadEvnDiagPSGrid"}
     data = {"class": "EvnDiagPSSect", "EvnDiagPS_pid": diagnosis_id}
-    diagnosis_list = await _make_api_post_request(http_service, cookies, params, data)
+    diagnosis_list = await _make_api_post_request(cookies, http_service, params, data)
 
     if not isinstance(diagnosis_list, list):
         logger.warning(f"EvnSection_id: {diagnosis_id}, API вернул не список: {type(diagnosis_list)}")
@@ -222,6 +222,7 @@ async def fetch_additional_diagnosis(
 
     return processed_diagnoses
 
+
 # ============== Конец - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
 
 
@@ -234,12 +235,13 @@ async def _get_event_section_id_for_fetching_medical_records(
         event_id: str
 ):
     """
-    Получает ID раздела события для отправки запроса получения списка медицинских записей.
+    Шаг 1.
+    Получаем id раздела события для запроса списка медицинских записей.
     """
     params = {"c": "EvnSection", "m": "loadEvnSectionGrid"}
     data = {"EvnSection_pid": event_id}
 
-    data = await _make_api_post_request(http_service, cookies, params, data)
+    data = await _make_api_post_request(cookies, http_service, params, data)
     return data[0].get("EvnSection_id", "")
 
 
@@ -249,16 +251,18 @@ async def _fetch_medical_records(
         event_section_id: str
 ):
     """
+    Шаг 2.
     Получаем список медицинских записей пациента по госпитализации
     """
     params = {"c": "EvnXml6E", "m": "loadStacEvnXmlList", "_dc": datetime.now().timestamp()}
     data = {"Evn_id": event_section_id}
-    return await _make_api_post_request(http_service, cookies, params, data)
+    return await _make_api_post_request(cookies, http_service, params, data)
 
 
 async def _get_discharge_summary(data: list[dict]) -> dict | None:
     """
-    Получаем из списка записей непосредственно сам выписной эпикриз
+    Шаг 3.
+    Получаем из списка медицинских записей непосредственно сам выписной эпикриз
     """
     for entry in data:
         if (entry.get("XmlType_Name") == "Эпикриз") and (entry.get("XmlTypeKind_Name") == "Выписной"):
@@ -266,11 +270,72 @@ async def _get_discharge_summary(data: list[dict]) -> dict | None:
     return None
 
 
-async def _sanitize_discharge_summary(entry: dict) -> dict[str, str]:
+async def _sanitize_discharge_summary_ids(entry: dict) -> Dict[str, str]:
+    """
+    Шаг 4.
+    Забираем только необходимые id для запроса на получение сырых данных из выписного эпикриза
+    """
     return {
         "Evn_id": entry.get("EvnXml_pid", ""),
         "EvnXml_id": entry.get("EMDRegistry_ObjectID", ""),
     }
+
+
+async def _fetch_discharge_summary_raw_data(
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        event_section_id: str,
+        sanitized_discharge_summary_ids: dict
+):
+    """
+    Шаг 5.
+    Получаем сырые данные из выписного эпикриза
+    """
+    params = {"c": "XmlTemplate6E", "m": "getXmlTemplateForEvnXml", "_dc": datetime.now().timestamp()}
+    data = {"Evn_id": event_section_id}
+    data.update(sanitized_discharge_summary_ids)
+    return await _make_api_post_request(cookies, http_service, params, data)
+
+
+async def _sanitize_discharge_summary_data(discharge_summary_raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Шаг 6.
+    Получение всех возможных данных по выписному эпикризу.
+    """
+    raw_xml_data = discharge_summary_raw_data.get("xmlData", {})
+
+    diagnos = raw_xml_data.get("diagnos", None)
+    item_90 = raw_xml_data.get("specMarker_90", None)
+    item_94 = raw_xml_data.get("specMarker_94", None)
+    item_272 = raw_xml_data.get("specMarker_272", None)
+    item_284 = raw_xml_data.get("specMarker_284", None)
+    item_659 = raw_xml_data.get("specMarker_659", None)
+
+    # ======== Сопутствующие заболевания вариант получения из ключа template (эксперимент)
+    template_raw = discharge_summary_raw_data.get("template", "")
+
+    regex = r"Сопутствующие заболевания:\s*<br>\s*(.*?)(?=<\/)"
+    match = re.search(regex, template_raw, re.DOTALL)
+    concomitant_diseases = match.group(1).strip() if match else None
+
+    regex = r"Осложнения основного заболевания:\s*(.*?)(?=<\/)"
+    match = re.search(regex, template_raw, re.DOTALL)
+    primary_complication = match.group(1).strip() if match else None
+
+    result = {
+        "pure": {
+            "diagnos": diagnos,
+            "item_90": item_90,
+            "item_94": item_94,
+            "item_272": item_272,
+            "item_284": item_284,
+            "item_659": item_659,
+            "concomitant_diseases": concomitant_diseases,
+            "primary_complication": primary_complication,
+        },
+        "raw": discharge_summary_raw_data,
+    }
+    return result
 
 
 async def fetch_patient_discharge_summary(
@@ -281,41 +346,11 @@ async def fetch_patient_discharge_summary(
     event_section_id = await _get_event_section_id_for_fetching_medical_records(cookies, http_service, event_id)
     medical_records_list = await _fetch_medical_records(cookies, http_service, event_section_id)
     discharge_summary_ids = await _get_discharge_summary(medical_records_list)
-    sanitized_discharge_summary_ids = await _sanitize_discharge_summary(discharge_summary_ids)
-
-    params = {"c": "XmlTemplate6E", "m": "getXmlTemplateForEvnXml", "_dc": datetime.now().timestamp()}
-    data = {"Evn_id": event_section_id}
-    data.update(sanitized_discharge_summary_ids)
-    discharge_summary_raw_data = await _make_api_post_request(http_service, cookies, params, data)
-
-    raw_xml_data = discharge_summary_raw_data.get("xmlData", {})
-
-    diagnos = raw_xml_data.get("diagnos", None)  # код основного диагноза
-    item_90 = raw_xml_data.get("specMarker_90", None)  # код основного диагноза
-    item_94 = raw_xml_data.get("specMarker_94", None)  # название основного диагноза
-    item_272 = raw_xml_data.get("specMarker_272", None)
-    item_284 = raw_xml_data.get("specMarker_284", None)
-    item_659 = raw_xml_data.get("specMarker_659", None)
-
-    # ======== Сопутствующие заболевания вариант получения из ключа template (эксперимент)
-
-    template_raw = discharge_summary_raw_data.get("template", "")
-    regex = r"Сопутствующие заболевания:\s*<br>\s*(.*?)(?=<\/)"
-
-    match = re.search(regex, template_raw, re.DOTALL)
-    extracted_text = match.group(1).strip() if match else None
-
-    result = {
-        "pure": {
-            "diagnos": diagnos,
-            "item_90": item_90,
-            "item_94": item_94,
-            "item_272": item_272,
-            "item_284": item_284,
-            "item_659": item_659,
-            "template": extracted_text,
-        },
-        "raw": discharge_summary_raw_data,
-    }
-
-    return result
+    sanitized_discharge_summary_ids = await _sanitize_discharge_summary_ids(discharge_summary_ids)
+    discharge_summary_raw_data = await _fetch_discharge_summary_raw_data(
+        cookies, http_service,
+        event_section_id,
+        sanitized_discharge_summary_ids
+    )
+    discharge_summary = await _sanitize_discharge_summary_data(discharge_summary_raw_data)
+    return discharge_summary
