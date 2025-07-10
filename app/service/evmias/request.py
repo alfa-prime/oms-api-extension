@@ -316,5 +316,5 @@ async def fetch_patient_discharge_summary(
         "raw": raw_discharge_summary_data,
     }
 
-    logger.info(f"Шаг 5/5: Эпикриз успешно обработан для event_id: {event_id}.")
+    logger.info(f"Эпикриз успешно обработан для event_id: {event_id}.")
     return result
