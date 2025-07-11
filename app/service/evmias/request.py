@@ -316,22 +316,24 @@ async def fetch_patient_discharge_summary(
 
     # -- 1. Определяем все возможные заголовки и "стоп-слова" --
     # Возможные заголовки для каждого блока (через | для regex)
-    LABELS_PRIMARY = r"Диагноз основной|Основное заболевание"
-    LABELS_COMPLICATION = r"Осложнения основного заболевания|Осложнения"
-    LABELS_CONCOMITANT = r"Сопутствующие заболевания"
+    LABELS_PRIMARY = r"Диагноз основной|Основное заболевание" # noqa
+    LABELS_COMPLICATION = r"Осложнения основного заболевания|Осложнения" # noqa
+    LABELS_CONCOMITANT = r"Сопутствующие заболевания" # noqa
 
     # Все возможные заголовки, которые могут идти *после* наших блоков. Они служат "якорями" конца.
-    STOP_LABELS = [
+    STOP_LABELS = [ # noqa
         LABELS_COMPLICATION,
         LABELS_CONCOMITANT,
         r"Внешняя причина при травмах",
         r"Дополнительные сведения о заболевании",
-        "@#@ОсложненияОсновного",
-        "@#@СопутствующиеДиагнозы",
-        "@#@КодОсновногоДиагнозаДвижения",
+        r"@#@ОсложненияОсновногоДиагнозаДвижРасш",
+        r"ОсновногоДиагнозаДвижРасш",
+        r"@#@СопутствующиеДиагнозы",
+        r"@#@КодОсновногоДиагнозаДвижения",
+        r"Состояние при поступлении:",
     ]
     # Объединяем все стоп-заголовки в один паттерн для поиска конца блока
-    STOP_PATTERN = r"(?:" + "|".join(STOP_LABELS) + r")"
+    STOP_PATTERN = r"(?:" + "|".join(STOP_LABELS) + r")" # noqa
 
     def extract_raw_section(template, start_labels_pattern):
         """Извлекает сырое содержимое блока между его заголовком и следующим известным заголовком."""
@@ -355,8 +357,6 @@ async def fetch_patient_discharge_summary(
     primary_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_primary)]
     # Добавляем данные из старых полей для совместимости
     primary_diagnosis = combine_parts(primary_text, *primary_markers)
-    # primary_diagnosis = combine_parts(primary_text, *primary_markers, xml_data.get("specMarker_90"),
-    #                                   xml_data.get("specMarker_94"))
 
     # Обработка осложнений
     complication_text = clean_html(re.sub(marker_pattern, '', raw_complication))
