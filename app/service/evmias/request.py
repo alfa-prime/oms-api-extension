@@ -362,15 +362,27 @@ async def fetch_patient_discharge_summary(
     complication_text = clean_html(re.sub(marker_pattern, '', raw_complication))
     complication_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_complication)]
     primary_complication = combine_parts(complication_text, *complication_markers)
+    if primary_complication:
+        primary_complication = primary_complication.replace('Сахарный диабет', '<b>Сахарный диабет</b>')
 
     # Обработка сопутствующих
     concomitant_text = clean_html(re.sub(marker_pattern, '', raw_concomitant))
     concomitant_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_concomitant)]
     concomitant_diseases = combine_parts(concomitant_text, *concomitant_markers)
+    if concomitant_diseases:
+        concomitant_diseases = concomitant_diseases.replace('Сахарный диабет', '<b>Сахарный диабет</b>')
+
+    diagnos = xml_data.get("diagnos")
+    if diagnos:
+        diagnos = diagnos.replace('Сахарный диабет', '<b>Сахарный диабет</b>')
+
+    item_659 = xml_data.get("specMarker_659")
+    if item_659:
+        item_659 = item_659.replace('Сахарный диабет', '<b>Сахарный диабет</b>')
 
     result = {
         "pure": {
-            "diagnos": xml_data.get("diagnos"),
+            "diagnos": diagnos,
             "primary_diagnosis": primary_diagnosis,
             "primary_complication": primary_complication,
             "concomitant_diseases": concomitant_diseases,
@@ -378,7 +390,7 @@ async def fetch_patient_discharge_summary(
             "item_94": xml_data.get("specMarker_94"),
             "item_272": xml_data.get("specMarker_272"),
             "item_284": xml_data.get("specMarker_284"),
-            "item_659": xml_data.get("specMarker_659"),
+            "item_659": item_659,
         },
         "raw": raw_discharge_summary_data,
     }
