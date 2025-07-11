@@ -17,7 +17,7 @@ HEADERS = {
 
 
 async def _make_api_post_request(
-    cookies: dict, http_service: HTTPXClient, params: dict, data: dict
+        cookies: dict, http_service: HTTPXClient, params: dict, data: dict
 ) -> dict | list:
     """
     Выполняет стандартный POST-запрос к API ЕМИАС и возвращает JSON-ответ.
@@ -36,7 +36,7 @@ async def _make_api_post_request(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_person_data(
-    cookies: dict[str, str], http_service: HTTPXClient, person_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, person_id: str
 ) -> dict:
     """
     Загружает основные данные о пациенте по его ID.
@@ -50,7 +50,7 @@ async def fetch_person_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_movement_data(
-    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> dict:
     """
     Загружает данные о движении пациента в рамках случая госпитализации.
@@ -66,7 +66,7 @@ async def fetch_movement_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_referral_data(
-    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> dict:
     """
     Загружает данные о направлении на госпитализацию.
@@ -85,9 +85,9 @@ async def fetch_referral_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_disease_data(
-    cookies: dict[str, str],
-    http_service: HTTPXClient,
-    data: dict,
+        cookies: dict[str, str],
+        http_service: HTTPXClient,
+        data: dict,
 ) -> dict:
     """
     Загружает данные о заболевании из раздела случая госпитализации.
@@ -114,7 +114,7 @@ async def fetch_disease_data(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_referred_org_by_id(
-    cookies: dict[str, str], http_service: HTTPXClient, org_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, org_id: str
 ) -> dict:
     """
     Получает информацию о направившей организации по её ID.
@@ -132,7 +132,7 @@ async def fetch_referred_org_by_id(
 
 
 async def _fetch_all_medical_services(
-    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> List[Dict[str, Any]]:
     """
     Получает список ВСЕХ оказанных услуг в рамках случая госпитализации.
@@ -153,7 +153,7 @@ async def _fetch_all_medical_services(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_operations_data(
-    cookies: dict[str, str], http_service: HTTPXClient, event_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> list[dict[str, str]]:
     """
     Находит и возвращает список операций среди всех услуг,
@@ -178,7 +178,7 @@ async def fetch_operations_data(
 
 
 async def _fetch_raw_diagnosis_list(
-    cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
 ) -> List[Dict[str, str]]:
     """
     Получает "сырой" список диагнозов от API.
@@ -197,7 +197,7 @@ async def _fetch_raw_diagnosis_list(
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
 async def fetch_additional_diagnosis(
-    cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
+        cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
 ) -> list[dict[str, str]]:
     """
     Получает список дополнительных диагнозов из движения в ЕВМИАС, если они есть,
@@ -225,6 +225,24 @@ async def fetch_additional_diagnosis(
 
 
 # ============== Конец - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
+
+
+def clean_html(raw_html):
+    """Удаляет HTML-теги, лишние пробелы и переносы строк."""
+    if not raw_html:
+        return ""
+    # Удаляем все HTML-теги
+    text = re.sub(r'<.*?>', ' ', raw_html)
+    # Заменяем множественные пробелы и переносы строк на один пробел
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+
+def combine_parts(*args):
+    """Объединяет несколько текстовых частей в одну строку, игнорируя пустые."""
+    # Фильтруем пустые или None значения и удаляем лишние пробелы
+    valid_parts = [str(part).strip() for part in args if part]
+    return " ".join(valid_parts) if valid_parts else None
 
 
 @log_and_catch(debug=settings.DEBUG_HTTP)
@@ -296,22 +314,71 @@ async def fetch_patient_discharge_summary(
     xml_data = raw_discharge_summary_data.get("xmlData", {})
     template_raw = raw_discharge_summary_data.get("template", "")
 
-    pattern = r"Сопутствующие заболевания:\s*<br>\s*(.*?)(?=<\/)"
-    concomitant_match = re.search(pattern, template_raw, re.DOTALL)
+    # -- 1. Определяем все возможные заголовки и "стоп-слова" --
+    # Возможные заголовки для каждого блока (через | для regex)
+    LABELS_PRIMARY = r"Диагноз основной|Основное заболевание"
+    LABELS_COMPLICATION = r"Осложнения основного заболевания|Осложнения"
+    LABELS_CONCOMITANT = r"Сопутствующие заболевания"
 
-    pattern = r"Осложнения основного заболевания:\s*(.*?)(?=<\/)"
-    complication_match = re.search(pattern, template_raw, re.DOTALL)
+    # Все возможные заголовки, которые могут идти *после* наших блоков. Они служат "якорями" конца.
+    STOP_LABELS = [
+        LABELS_COMPLICATION,
+        LABELS_CONCOMITANT,
+        r"Внешняя причина при травмах",
+        r"Дополнительные сведения о заболевании",
+        "@#@ОсложненияОсновного",
+        "@#@СопутствующиеДиагнозы",
+        "@#@КодОсновногоДиагнозаДвижения",
+    ]
+    # Объединяем все стоп-заголовки в один паттерн для поиска конца блока
+    STOP_PATTERN = r"(?:" + "|".join(STOP_LABELS) + r")"
+
+    def extract_raw_section(template, start_labels_pattern):
+        """Извлекает сырое содержимое блока между его заголовком и следующим известным заголовком."""
+        # Паттерн: (группа 1: заголовок) \s*:? (группа 2: содержимое) (?= группа 3: следующий заголовок или конец строки)
+        pattern = rf"({start_labels_pattern})\s*:?\s*(.*?)(?={STOP_PATTERN}|$)"
+        match = re.search(pattern, template, re.DOTALL | re.IGNORECASE)
+        return match.group(2).strip() if match else ""
+
+    # -- 3. Извлекаем сырое содержимое для каждого блока --
+
+    raw_primary = extract_raw_section(template_raw, LABELS_PRIMARY)
+    raw_complication = extract_raw_section(template_raw, LABELS_COMPLICATION)
+    raw_concomitant = extract_raw_section(template_raw, LABELS_CONCOMITANT)
+
+    # -- 4. Извлекаем текст и значения маркеров из сырых блоков --
+
+    marker_pattern = r"@#@([\w\d]+)@#@"
+
+    # Обработка основного диагноза
+    primary_text = clean_html(re.sub(marker_pattern, '', raw_primary))
+    primary_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_primary)]
+    # Добавляем данные из старых полей для совместимости
+    primary_diagnosis = combine_parts(primary_text, *primary_markers)
+    # primary_diagnosis = combine_parts(primary_text, *primary_markers, xml_data.get("specMarker_90"),
+    #                                   xml_data.get("specMarker_94"))
+
+    # Обработка осложнений
+    complication_text = clean_html(re.sub(marker_pattern, '', raw_complication))
+    complication_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_complication)]
+    primary_complication = combine_parts(complication_text, *complication_markers)
+
+    # Обработка сопутствующих
+    concomitant_text = clean_html(re.sub(marker_pattern, '', raw_concomitant))
+    concomitant_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_concomitant)]
+    concomitant_diseases = combine_parts(concomitant_text, *concomitant_markers)
 
     result = {
         "pure": {
             "diagnos": xml_data.get("diagnos"),
+            "primary_diagnosis": primary_diagnosis,
+            "primary_complication": primary_complication,
+            "concomitant_diseases": concomitant_diseases,
             "item_90": xml_data.get("specMarker_90"),
             "item_94": xml_data.get("specMarker_94"),
             "item_272": xml_data.get("specMarker_272"),
             "item_284": xml_data.get("specMarker_284"),
             "item_659": xml_data.get("specMarker_659"),
-            "concomitant_diseases": concomitant_match.group(1).strip() if concomitant_match else None,
-            "primary_complication": complication_match.group(1).strip() if complication_match else None,
         },
         "raw": raw_discharge_summary_data,
     }

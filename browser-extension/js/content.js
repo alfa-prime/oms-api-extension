@@ -139,6 +139,12 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
                     <div class="pure-table-wrapper">${discharge.item_659}</div>
                 </div>`;
         }
+        if (discharge.primary_diagnosis) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <div class="pure-table-wrapper">${discharge.primary_diagnosis}</div>
+                </div>`;
+        }
         if (discharge.concomitant_diseases) {
             pureHtml += `
                 <div class="pure-data-item">
