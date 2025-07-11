@@ -355,7 +355,6 @@ async def fetch_patient_discharge_summary(
     # Обработка основного диагноза
     primary_text = clean_html(re.sub(marker_pattern, '', raw_primary))
     primary_markers = [xml_data.get(marker_name) for marker_name in re.findall(marker_pattern, raw_primary)]
-    # Добавляем данные из старых полей для совместимости
     primary_diagnosis = combine_parts(primary_text, *primary_markers)
 
     # Обработка осложнений
