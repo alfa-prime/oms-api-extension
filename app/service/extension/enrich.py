@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Annotated, Dict, Any, Awaitable
 
 from fastapi import Depends
@@ -119,8 +120,7 @@ async def enrich_data(
     outcome_code = await get_outcome_code(disease_data)
     disease_type_code = await get_disease_type_code(disease_data)
 
-    bed_profile_name = movement_data.get("LpuSectionBedProfile_Name", "")
-    bed_profile_code = await get_bed_profile_code(bed_profile_name)
+    bed_profile_code = await get_bed_profile_code(movement_data)
 
     polis_number = person_data.get("Person_EdNum", "")
     person_birthday = started_data.get("Person_Birthday", "")
@@ -137,7 +137,7 @@ async def enrich_data(
     medical_care_form = await get_medical_care_form(referred_data)
     medical_care_profile = await get_medical_care_profile(movement_data)
 
-    diag_code = movement_data.get("Diag_Code")
+    diag_code = movement_data.get("Diag_Code", "")
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
     treatment_outcome_code = movement_data.get("LeaveType_Code")
 

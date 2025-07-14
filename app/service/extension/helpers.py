@@ -160,14 +160,28 @@ async def get_medical_care_profile(data: dict) -> str | None:
     return code
 
 
-async def get_bed_profile_code(bed_profile_name: str) -> str | None:
+async def get_bed_profile_code(movement_data: dict) -> str | None:
     """
     Возвращает код профиля койки по её названию.
     """
+    bed_profile_name = movement_data.get("LpuSectionBedProfile_Name", "")
+    diag_code = movement_data.get("Diag_Code", "")
+
+    if not bed_profile_name:
+        logger.warning(f"Не найден профиль койки для person_id: {movement_data.get('Person_id')},")
+        return None
+
+    # Исправляем название профиля койки в соответствии с кодом диагноза, так как в ЕВМИАС не всегда правильно
+    diagnosis_pattern = re.compile(r"^(M(16|17)\.\d)$")
+    if diagnosis_pattern.match(diag_code):
+        bed_profile_name = ("реабилитационные для больных с заболеваниями опорно-двигательного аппарата "
+                            "и периферической нервной системы")
+
     bed_profile_id = bed_profiles.get(bed_profile_name)
     if not bed_profile_id:
         logger.warning(f"Не найден код профиля койки для: {bed_profile_name}")
         return None
+
     logger.debug(f"Определяем код профиля койки: {bed_profile_name}, код: {bed_profile_id}")
     return str(bed_profile_id)
 
