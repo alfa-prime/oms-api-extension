@@ -13,8 +13,8 @@ async function injectionTargetFunction(enrichedDataForForm) {
   // --- КОНФИГУРАЦИЯ ПРОФИЛЕЙ ОЖИДАНИЯ ---
   const WAIT_PROFILES = {
     FAST: { timeout: 5000, stableDelay: 800 }, // Для очень быстрых справочников
-    DEFAULT: { timeout: 10000, stableDelay: 1500 }, // Для справочников средней скорости
-    SLOW: { timeout: 25000, stableDelay: 3000 }, // Для самых "тяжелых" справочников (МО, МКБ)
+    DEFAULT: { timeout: 8000, stableDelay: 1100 }, // Для справочников средней скорости
+    SLOW: { timeout: 15000, stableDelay: 2000 }, // Для самых "тяжелых" справочников (МО)
   };
 
   // ——— Вспомогательные функции ожидания ———
@@ -480,6 +480,7 @@ async function injectionTargetFunction(enrichedDataForForm) {
       });
     }
 
+    // МЕДЛЕННЫЕ И ТЯЖЕЛЫЕ СПРАВОЧНИКИ profile - WAIT_PROFILES.SLOW
     if (
       (value =
         dataMapToInsert[
@@ -492,12 +493,9 @@ async function injectionTargetFunction(enrichedDataForForm) {
         fieldSelector: "input[name='ReferralHospitalizationSendingDepartment']",
         column: "Реестровый номер",
         value,
-        waitProfile: WAIT_PROFILES.DEFAULT,
+        waitProfile: WAIT_PROFILES.SLOW,
       });
     }
-
-    // МЕДЛЕННЫЕ И ТЯЖЕЛЫЕ СПРАВОЧНИКИ profile - WAIT_PROFILES.SLOW
-    // пока не используется
 
 
     // --- Условное заполнение простых полей и дат (они быстрые) ---
