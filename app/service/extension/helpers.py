@@ -3,7 +3,14 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from app.core import logger, get_settings
-from app.mapper import bed_profiles, disease_outcome_ids, medical_orgs, department_codes, medical_care_profile
+from app.mapper import (
+    bed_profiles,
+    disease_outcome_ids,
+    medical_orgs,
+    department_codes,
+    medical_care_profile,
+    bed_profile_correction_rules,
+)
 from app.service import fetch_referred_org_by_id
 
 settings = get_settings()
@@ -171,11 +178,15 @@ async def get_bed_profile_code(movement_data: dict) -> str | None:
         logger.warning(f"Не найден профиль койки для person_id: {movement_data.get('Person_id')},")
         return None
 
-    # Исправляем название профиля койки в соответствии с кодом диагноза, так как в ЕВМИАС не всегда правильно
-    diagnosis_pattern = re.compile(r"^(M(16|17)\.\d)$")
-    if diagnosis_pattern.match(diag_code):
-        bed_profile_name = ("реабилитационные для больных с заболеваниями опорно-двигательного аппарата "
-                            "и периферической нервной системы")
+    # При необходимости корректируем название профиля койки в соответствии с правилами основными на коде диагноза,
+    # так как в ЕВМИАС профиль койки может быть указан неверно
+    for rule in bed_profile_correction_rules:
+        if diag_code and rule["pattern"].match(diag_code):
+            original_name = bed_profile_name
+            bed_profile_name = rule["replacement"]
+            logger.info(
+                f"Скорректирован профиль койки для диагноза {diag_code}: с {original_name} на {bed_profile_name}"
+            )
 
     bed_profile_id = bed_profiles.get(bed_profile_name)
     if not bed_profile_id:

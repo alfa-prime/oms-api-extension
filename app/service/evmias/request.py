@@ -165,7 +165,7 @@ async def fetch_operations_data(
     if operations:
         logger.debug(f"event_id: {event_id}, найдено операций: {len(operations)}")
     else:
-        logger.warning(
+        logger.info(
             f"event_id: {event_id}, операции не найдены в списке из {len(services)} услуг."
         )
 
