@@ -10,7 +10,7 @@ export async function searchPatient() {
   const lastName = document.getElementById("lastname").value.trim();
   const startDate = document.getElementById("startDate").value;
   const endDate = document.getElementById("endDate").value;
-  const payTypeId = document.getElementById("payType").value;
+//  const payTypeId = document.getElementById("payType").value;
 
   ui.clearUserMessages();
   ui.clearResultsList();
@@ -30,7 +30,7 @@ export async function searchPatient() {
     last_name: lastName,
     start_date: startDate,
     end_date: endDate,
-    pay_type_id: payTypeId,
+//    pay_type_id: payTypeId,
   };
 
   try {

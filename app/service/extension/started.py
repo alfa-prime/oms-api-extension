@@ -24,7 +24,8 @@ async def fetch_started_data(
     data = {
         "SearchFormType": "EvnPS",
         "Person_Surname": patient.last_name,
-        "PayType_id": patient.pay_type_id or settings.SEARCH_PAY_TYPE_ID,
+        "PayType_id": settings.SEARCH_PAY_TYPE_ID,
+        # "PayType_id": patient.pay_type_id or settings.SEARCH_PAY_TYPE_ID,
         "LpuBuilding_cid": settings.SEARCH_LPU_BUILDING_CID,
         "EvnSection_disDate_Range": patient.dis_date_range or f"{SEARCH_PERIOD_START_DATE} - {datetime.now().strftime('%d.%m.%Y')}",
     }

@@ -10,7 +10,7 @@ class ExtensionStartedData(BaseModel):
     start_date: Optional[str] = Field(None, description="Дата начала периода в формате YYYY-MM-DD", examples=[""])
     end_date: Optional[str] = Field(None, description="Дата окончания периода в формате YYYY-MM-DD", examples=[""])
     dis_date_range: Optional[str] = Field(None, description="Диапазон дат госпитализации", examples=[""])
-    pay_type_id: Optional[str] = Field(None, description="ID типа оплаты для поиска (ОМС/ВМП)")
+    # pay_type_id: Optional[str] = Field(None, description="ID типа оплаты для поиска (ОМС/ВМП)")
 
     @model_validator(mode="before") # noqa
     @classmethod
