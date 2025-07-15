@@ -7,13 +7,6 @@ from pydantic import BaseModel, Field, constr, model_validator
 class ExtensionStartedData(BaseModel):
     """Модель для стартовых данных"""
     last_name: str = Field(..., description="Фамилия пациента", examples=["АЛЕЙНИКОВ"])
-    first_name: Optional[str] = Field(None, description="Имя пациента", examples=["ИГОРЬ"])
-    middle_name: Optional[str] = Field(None, description="Отчество пациента", examples=["НИКОЛАЕВИЧ"])
-    birthday: Optional[constr(pattern=r"\d{2}\.\d{2}\.\d{4}")] = Field(
-        None,
-        description="Дата рождения в формате DD.MM.YYYY",
-        examples=["10.12.1986"]
-    )
     start_date: Optional[str] = Field(None, description="Дата начала периода в формате YYYY-MM-DD", examples=[""])
     end_date: Optional[str] = Field(None, description="Дата окончания периода в формате YYYY-MM-DD", examples=[""])
     dis_date_range: Optional[str] = Field(None, description="Диапазон дат госпитализации", examples=[""])

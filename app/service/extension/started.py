@@ -27,10 +27,6 @@ async def fetch_started_data(
         "PayType_id": settings.SEARCH_PAY_TYPE_ID,
         "LpuBuilding_cid": settings.SEARCH_LPU_BUILDING_CID,
         "EvnSection_disDate_Range": patient.dis_date_range or f"{SEARCH_PERIOD_START_DATE} - {datetime.now().strftime('%d.%m.%Y')}",
-        # Добавляем опциональные поля, если они не пустые, используя := и **
-        **({"Person_Firname": first_name} if (first_name := patient.first_name) else {}),
-        **({"Person_Secname": middle_name} if (middle_name := patient.middle_name) else {}),
-        **({"Person_Birthday": birthday} if (birthday := patient.birthday) else {}),
     }
 
     logger.debug(f"Поиск госпитализаций пациента с параметрами: {data}")
