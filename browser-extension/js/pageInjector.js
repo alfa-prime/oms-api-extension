@@ -14,7 +14,7 @@ async function injectionTargetFunction(enrichedDataForForm) {
   const WAIT_PROFILES = {
     FAST: { timeout: 5000, stableDelay: 800 }, // Для очень быстрых справочников
     DEFAULT: { timeout: 8000, stableDelay: 1100 }, // Для справочников средней скорости
-    SLOW: { timeout: 15000, stableDelay: 2000 }, // Для самых "тяжелых" справочников (МО)
+    SLOW: { timeout: 15000, stableDelay: 1600 }, // Для самых "тяжелых" справочников (МО)
   };
 
   // ——— Вспомогательные функции ожидания ———

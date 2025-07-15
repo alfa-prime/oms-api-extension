@@ -129,8 +129,6 @@ async def fetch_referred_org_by_id(
 
 
 # ============== Начало - Получаем только операции (если они есть) из списка оказанных услуг ==============
-
-
 async def _fetch_all_medical_services(
         cookies: dict[str, str], http_service: HTTPXClient, event_id: str
 ) -> List[Dict[str, Any]]:
@@ -170,13 +168,10 @@ async def fetch_operations_data(
         )
 
     return operations
-
-
 # ============== Конец - Получаем только операции (если они есть) из списка оказанных услуг ==============
 
+
 # ============== Начало - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
-
-
 async def _fetch_raw_diagnosis_list(
         cookies: dict[str, str], http_service: HTTPXClient, diagnosis_id: str
 ) -> List[Dict[str, str]]:
@@ -222,8 +217,6 @@ async def fetch_additional_diagnosis(
         logger.info(f"EvnSection_id: {diagnosis_id}, доп. диагнозы не найдены")
 
     return processed_diagnoses
-
-
 # ============== Конец - Получаем дополнительные диагнозы (если они есть) из движения в ЕВМИАС ==========
 
 
