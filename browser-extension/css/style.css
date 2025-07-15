@@ -4,6 +4,7 @@ body {
     padding: 10px;
 }
 
+select,
 input,
 button {
     width: 100%;
