@@ -383,6 +383,7 @@ async def fetch_patient_discharge_summary(
             "item_272": xml_data.get("specMarker_272"),
             "item_284": xml_data.get("specMarker_284"),
             "item_659": item_659,
+            "item_145": xml_data.get("specMarker_145"),
         },
         "raw": raw_discharge_summary_data,
     }

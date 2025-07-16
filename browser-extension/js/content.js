@@ -159,6 +159,13 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
                     <div class="pure-table-wrapper">${discharge.primary_complication}</div>
                 </div>`;
         }
+        if (discharge.item_145) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <strong>Услуги:</strong>
+                    <div class="pure-table-wrapper">${discharge.item_145}</div>
+                </div>`;
+        }
         pureContainer.innerHTML = pureHtml;
     }
     document.body.prepend(container);
