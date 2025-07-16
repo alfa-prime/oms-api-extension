@@ -112,6 +112,11 @@ async def enrich_data(
     medical_service_data = medical_service_data or []
     pure_discharge_summary = discharge_summary.get("pure") if discharge_summary else {}
 
+    # если есть данные об операции, то убираем данные о них из эпикриза, что бы не было дублирования,
+    # это для случаев когда в эпикризе есть данные об операции, а в медстатистике нет
+    if medical_service_data:
+        pure_discharge_summary["item_145"] = None
+
     valid_additional_diagnosis = await _fetch_and_process_additional_diagnosis(cookies, http_service, referred_data)
 
     referred_organization = await get_referred_organization(cookies, http_service, referred_data)
@@ -140,10 +145,6 @@ async def enrich_data(
     diag_code = movement_data.get("Diag_Code", "")
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
     treatment_outcome_code = movement_data.get("LeaveType_Code")
-
-    # если есть данные об операции, то убираем данные о них из эпикриза, что бы не было дублирования
-    if medical_service_data:
-        pure_discharge_summary["item_145"] = None
 
     enriched_data = {
         "input[name='ReferralHospitalizationNumberTicket']": "б/н",
