@@ -141,6 +141,10 @@ async def enrich_data(
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]
     treatment_outcome_code = movement_data.get("LeaveType_Code")
 
+    # если есть данные об операции, то убираем данные о них из эпикриза, что бы не было дублирования
+    if medical_service_data:
+        pure_discharge_summary["item_145"] = None
+
     enriched_data = {
         "input[name='ReferralHospitalizationNumberTicket']": "б/н",
         "input[name='ReferralHospitalizationDateTicket']": direction_date,

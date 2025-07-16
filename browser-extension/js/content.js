@@ -107,6 +107,7 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
     const pureContainer = container.querySelector('#evmias-pure-data-container');
     if (discharge && Object.values(discharge).some(v => v)) {
         let pureHtml = '';
+
         if (discharge.diagnos) {
             pureHtml += `
                 <div class="pure-data-item">
@@ -166,6 +167,7 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
                     <div class="pure-table-wrapper">${discharge.item_145}</div>
                 </div>`;
         }
+
         pureContainer.innerHTML = pureHtml;
     }
     document.body.prepend(container);
