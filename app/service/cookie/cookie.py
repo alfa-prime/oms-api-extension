@@ -94,13 +94,27 @@ async def fetch_initial_cookies(http_service: HTTPXClient) -> dict:
 
 async def authorize(cookies: dict, http_service: HTTPXClient) -> dict:
     """Авторизует пользователя и добавляет логин в cookies."""
-    params = {"c": "main", "m": "index", "method": "Logon"}
-    data = {"login": settings.EVMIAS_LOGIN, "psw": settings.EVMIAS_PASSWORD}
+    headers = {
+        "Origin": settings.BASE_HEADERS_ORIGIN_URL,
+        "Referer": settings.BASE_HEADERS_REFERER_URL,
+        "X-Requested-With": "XMLHttpRequest",  # Тоже важный заголовок из реального запроса
+    }
+
+    params = {"c": "main", "m": "index", "method": "Logon", "login": settings.EVMIAS_LOGIN}
+    data = {
+        "login": settings.EVMIAS_LOGIN,
+        "psw": settings.EVMIAS_PASSWORD,
+        "swUserRegion": "",
+        "swUserDBType": "",
+    }
     # Используем http_service
+    logger.warning(f"cookies для авторизации: {cookies}")
+
     response = await http_service.fetch(
         url=BASE_URL,
         method="POST",
         cookies=cookies,
+        headers=headers,
         params=params,
         data=data,
         raise_for_status=False
