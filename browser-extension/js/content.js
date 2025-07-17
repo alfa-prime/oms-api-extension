@@ -170,7 +170,22 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
 
         pureContainer.innerHTML = pureHtml;
     }
-    document.body.prepend(container);
+
+     // ===== НАЧАЛО ИЗМЕНЕННОГО БЛОКА =====
+    // Ищем основной контейнер формы в iframe, используя уточненный селектор.
+    const injectionTarget = document.querySelector('div.x-window-body:has(input[name="ReferralHospitalizationNumberTicket"])');
+
+    if (injectionTarget) {
+        // Если нашли, вставляем нашу панель в самое начало этого контейнера.
+        injectionTarget.prepend(container);
+        console.log('[Content Script] Инфопанель встроена в основной контейнер формы.');
+    } else {
+        // Если по какой-то причине контейнер не найден, используем старый, надежный способ.
+        console.warn('[Content Script] Основной контейнер формы не найден. Панель встроена в body.');
+        document.body.prepend(container);
+    }
+    // ===== КОНЕЦ ИЗМЕНЕННОГО БЛОКА =====
+
     container.querySelector('#evmias-oms-close-btn').addEventListener('click', removeInjectedElements);
 }
 
