@@ -125,7 +125,10 @@ async def enrich_data(
     outcome_code = await get_outcome_code(disease_data)
     disease_type_code = await get_disease_type_code(disease_data)
 
-    bed_profile_code = await get_bed_profile_code(movement_data)
+    department_name = await get_department_name(started_data)
+    department_code = await get_department_code(department_name)
+
+    bed_profile_code = await get_bed_profile_code(movement_data, department_name)
 
     polis_number = person_data.get("Person_EdNum", "")
     person_birthday = started_data.get("Person_Birthday", "")
@@ -134,9 +137,6 @@ async def enrich_data(
     admission_date = started_data.get("EvnPS_setDate")
     direction_date = await get_direction_date(admission_date)
     discharge_date = started_data.get("EvnPS_disDate")
-
-    department_name = await get_department_name(started_data)
-    department_code = await get_department_code(department_name)
 
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)

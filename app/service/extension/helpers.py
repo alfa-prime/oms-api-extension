@@ -167,7 +167,7 @@ async def get_medical_care_profile(data: dict) -> str | None:
     return code
 
 
-async def get_bed_profile_code(movement_data: dict) -> str | None:
+async def get_bed_profile_code(movement_data: dict, department_name: str) -> str | None:
     """
     Возвращает код профиля койки по её названию.
     """
@@ -179,14 +179,15 @@ async def get_bed_profile_code(movement_data: dict) -> str | None:
         return None
 
     # При необходимости корректируем название профиля койки в соответствии с правилами основными на коде диагноза,
-    # так как в ЕВМИАС профиль койки может быть указан неверно
-    for rule in bed_profile_correction_rules:
-        if diag_code and rule["pattern"].match(diag_code):
-            original_name = bed_profile_name
-            bed_profile_name = rule["replacement"]
-            logger.info(
-                f"Скорректирован профиль койки для диагноза {diag_code}: с {original_name} на {bed_profile_name}"
-            )
+    # так как в ЕВМИАС профиль койки может быть указан неверно только для отделения 'Отделение реабилитации'
+    if department_name == "Отделение реабилитации":
+        for rule in bed_profile_correction_rules:
+            if diag_code and rule["pattern"].match(diag_code):
+                original_name = bed_profile_name
+                bed_profile_name = rule["replacement"]
+                logger.info(
+                    f"Скорректирован профиль койки для диагноза {diag_code}: с {original_name} на {bed_profile_name}"
+                )
 
     bed_profile_id = bed_profiles.get(bed_profile_name)
     if not bed_profile_id:
