@@ -167,6 +167,12 @@ function injectResultBlock(title, operations, diagnoses, discharge) {
                     <div class="pure-table-wrapper">${discharge.item_145}</div>
                 </div>`;
         }
+        if (discharge.AdditionalInf) {
+            pureHtml += `
+                <div class="pure-data-item">
+                    <div class="pure-table-wrapper">${discharge.AdditionalInf}</div>
+                </div>`;
+        }
 
         pureContainer.innerHTML = pureHtml;
     }

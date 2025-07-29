@@ -325,6 +325,7 @@ async def fetch_patient_discharge_summary(
         r"@#@КодОсновногоДиагнозаДвижения",
         r"Состояние при поступлении:",
         r"основного: ",
+        r"@#@НаименованиеОсновногоДиагнозаДвижения"
     ]
     # Объединяем все стоп-заголовки в один паттерн для поиска конца блока
     STOP_PATTERN = r"(?:" + "|".join(STOP_LABELS) + r")" # noqa
@@ -385,6 +386,7 @@ async def fetch_patient_discharge_summary(
             "item_284": xml_data.get("specMarker_284"),
             "item_659": item_659,
             "item_145": xml_data.get("specMarker_145"),
+            "AdditionalInf": xml_data.get("AdditionalInf"),
         },
         "raw": raw_discharge_summary_data,
     }

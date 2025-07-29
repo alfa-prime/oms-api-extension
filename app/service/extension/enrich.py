@@ -122,8 +122,7 @@ async def enrich_data(
     referred_organization = await get_referred_organization(cookies, http_service, referred_data)
     disease_data = await fetch_disease_data(cookies, http_service, movement_data)
 
-    outcome_code = await get_outcome_code(disease_data)
-    disease_type_code = await get_disease_type_code(disease_data)
+
 
     department_name = await get_department_name(started_data)
     department_code = await get_department_code(department_name)
@@ -141,6 +140,16 @@ async def enrich_data(
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
     medical_care_profile = await get_medical_care_profile(movement_data)
+
+    outcome_code = await get_outcome_code(disease_data)
+    disease_type_code = await get_disease_type_code(disease_data)
+
+    # todo: подумать, может быть отдельная функция для этого? посмотрим.
+    # Обрабатываем случай, когда в ЕВМИАС не указан исход заболевания.
+    # если условия оказания медицинской помощи 1 (круглосуточный стационар),
+    # то код исхода заболевания должен начинаться с 1xx (см. справочники https://nsi.ffoms.ru/ [V006, V019])
+    if medical_care_conditions == "1" and outcome_code == 202:
+        outcome_code = "102"
 
     diag_code = movement_data.get("Diag_Code", "")
     card_number = started_data.get("EvnPS_NumCard", "").split(" ")[0]

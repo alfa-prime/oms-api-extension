@@ -10,9 +10,10 @@ async function injectionTargetFunction(enrichedDataForForm) {
   const dataMapToInsert = enrichedDataForForm; // Используем весь объект
   let allElementsFound = true;
 
+
   // --- КОНФИГУРАЦИЯ ПРОФИЛЕЙ ОЖИДАНИЯ ---
   const WAIT_PROFILES = {
-    FAST: { timeout: 6000, stableDelay: 900 }, // Для очень быстрых справочников
+    FAST: { timeout: 7000, stableDelay: 950 }, // Для очень быстрых справочников
     DEFAULT: { timeout: 8000, stableDelay: 1100 }, // Для справочников средней скорости
     SLOW: { timeout: 15000, stableDelay: 1600 }, // Для самых "тяжелых" справочников (МО)
   };
@@ -319,19 +320,39 @@ async function injectionTargetFunction(enrichedDataForForm) {
 
   console.log("[PAGE INJECTOR] Вставка данных:", dataMapToInsert);
 
-  const iframe =
-    document.querySelector("iframe[name='mainFrame']") ||
-    document.querySelector("iframe");
+  function findCorrectIframeAndDocument() {
+      // Получаем все iframe на главной странице
+      const iframes = document.querySelectorAll('iframe');
+      console.log(`[PAGE INJECTOR] Найдено iframes на странице: ${iframes.length}`);
 
-  if (!iframe) {
-    chrome.runtime.sendMessage({
-      action: "injectionError",
-      error: "Основной iframe не найден на странице.",
-    });
-    return;
+      for (const iframe of iframes) {
+          try {
+              // Пытаемся получить доступ к документу внутри iframe
+              const innerDoc = iframe.contentWindow.document;
+              // Ищем наш "якорный" элемент внутри этого документа
+              if (innerDoc && innerDoc.querySelector("input[name='ReferralHospitalizationNumberTicket']")) {
+                  console.log("[PAGE INJECTOR] ✅ Найден правильный iframe, содержащий форму!");
+                  return { iframe, doc: innerDoc }; // Возвращаем и фрейм, и его документ
+              }
+          } catch (e) {
+              // Ошибки доступа (cross-origin) игнорируем, это не наш iframe
+              console.warn(`[PAGE INJECTOR] Не удалось получить доступ к содержимому iframe. Скорее всего, это не тот фрейм. Ошибка: ${e.message}`);
+          }
+      }
+      // Если цикл завершился, а мы ничего не нашли
+      console.error("[PAGE INJECTOR] Ни один из iframe на странице не содержит целевую форму.");
+      return { iframe: null, doc: null };
   }
 
-  const doc = iframe.contentWindow.document;
+  const { iframe, doc } = findCorrectIframeAndDocument();
+
+  if (!iframe || !doc) {
+      chrome.runtime.sendMessage({
+          action: "injectionError",
+          error: "Не удалось найти iframe с формой ГИС ОМС на странице.",
+      });
+      return;
+  }
 
   try {
     let value;

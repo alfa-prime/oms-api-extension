@@ -178,10 +178,16 @@ async def get_bed_profile_code(movement_data: dict, department_name: str) -> str
         logger.warning(f"Не найден профиль койки для person_id: {movement_data.get('Person_id')},")
         return None
 
-    # При необходимости корректируем название профиля койки в соответствии с правилами основными на коде диагноза,
-    # так как в ЕВМИАС профиль койки может быть указан неверно только для отделения 'Отделение реабилитации'
-    if department_name == "Отделение реабилитации":
-        for rule in bed_profile_correction_rules:
+    # При необходимости корректируем название профиля койки в соответствии
+    # с правилами основными на коде диагноза и имени отделения
+    if department_name in [
+        "Отделение реабилитации",
+        "Хирургическое отделение №1",
+        "Хирургическое отделение №2",
+        "Дневной стационар",
+        "Неврология",
+    ]:
+        for rule in bed_profile_correction_rules[department_name]:
             if diag_code and rule["pattern"].match(diag_code):
                 original_name = bed_profile_name
                 bed_profile_name = rule["replacement"]
@@ -204,9 +210,11 @@ async def get_outcome_code(disease_data: dict) -> str | None:
     """
     outcome_code_evmias = disease_data.get("ResultDesease_id")
     outcome_entry = disease_outcome_ids.get(outcome_code_evmias)
+
     if not outcome_entry:
         logger.warning(f"Не найден исход заболевания для evmias_id: {outcome_code_evmias}")
         return None
+
     outcome_code = outcome_entry.get("code")
     logger.debug(f"Определяем код исхода лечения: evmias_id {outcome_code_evmias}, код: {outcome_code}")
     return outcome_code
