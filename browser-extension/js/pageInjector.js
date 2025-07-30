@@ -1,26 +1,47 @@
 // browser-extension/js/pageInjector.js
 
-/**
- * Эта функция будет внедрена и выполнена на странице ГИС ОМС.
- * Она использует async/await для более чистого и последовательного выполнения шагов.
- * @param {object} enrichedDataForForm - Полный объект с данными, включая операции.
- */
-
-async function injectionTargetFunction(enrichedDataForForm) {
-  const dataMapToInsert = enrichedDataForForm; // Используем весь объект
+export async function injectionTargetFunction(enrichedDataForForm) {
+  const dataMapToInsert = enrichedDataForForm;
   let allElementsFound = true;
 
-
-  // --- КОНФИГУРАЦИЯ ПРОФИЛЕЙ ОЖИДАНИЯ ---
   const WAIT_PROFILES = {
-    FAST: { timeout: 7000, stableDelay: 950 }, // Для очень быстрых справочников
-    DEFAULT: { timeout: 8000, stableDelay: 1100 }, // Для справочников средней скорости
-    SLOW: { timeout: 15000, stableDelay: 1600 }, // Для самых "тяжелых" справочников (МО)
+    FAST: { timeout: 13000, stableDelay: 1000 },
+    DEFAULT: { timeout: 20000, stableDelay: 1400 },
+    SLOW: { timeout: 32000, stableDelay: 2000 },
   };
 
-  // ——— Вспомогательные функции ожидания ———
-  function waitForElement(doc, selector, timeout = 5000, interval = 100) {
+  const FIELD_COMPLEXITY_MAP = {
+    "ReferralHospitalizationSendingDepartment": WAIT_PROFILES.SLOW,
+    "HospitalizationInfoDiagnosisMainDisease": WAIT_PROFILES.DEFAULT,
+    "HospitalizationInfoSubdivision": WAIT_PROFILES.DEFAULT,
+    "ReferralHospitalizationMedIndications": WAIT_PROFILES.FAST,
+    "VidMpV008": WAIT_PROFILES.FAST,
+    "HospitalizationInfoV006": WAIT_PROFILES.FAST,
+    "HospitalizationInfoV014": WAIT_PROFILES.FAST,
+    "HospitalizationInfoSpecializedMedicalProfile": WAIT_PROFILES.FAST,
+    "HospitalizationInfoV020": WAIT_PROFILES.FAST,
+    "HospitalizationInfoC_ZABV027": WAIT_PROFILES.FAST,
+    "ResultV009": WAIT_PROFILES.FAST,
+    "IshodV012": WAIT_PROFILES.FAST,
+  };
+
+  function waitForRowSelected(rowElement, selectedClass = 'x-grid-row-selected', timeout = 3000) {
     return new Promise((resolve, reject) => {
+      const start = Date.now();
+      (function check() {
+        if (rowElement.classList.contains(selectedClass)) {
+          return resolve(true);
+        }
+        if (Date.now() - start > timeout) {
+          return reject(new Error(`Таймаут ожидания выбора строки (класс ${selectedClass} не появился).`));
+        }
+        setTimeout(check, 100);
+      })();
+    });
+  }
+
+  function waitForElement(doc, selector, timeout = 5000, interval = 100) {
+    return new Promise((resolve) => {
       const start = Date.now();
       (function check() {
         const el = doc.querySelector(selector);
@@ -35,54 +56,31 @@ async function injectionTargetFunction(enrichedDataForForm) {
     });
   }
 
-  function waitForLoadMaskGone(doc, timeout = 5000) {
+  function waitForLoadMaskGone(doc, timeout = 10000) {
     return new Promise((resolve, reject) => {
       const start = Date.now();
       (function check() {
         const mask = doc.querySelector(".x-mask-msg");
-        if (!mask || getComputedStyle(mask).display === "none") {
-          return resolve();
-        }
-
-        if (Date.now() - start > timeout) {
-          return reject(
-            new Error(
-              "Таймаут ожидания исчезновения маски загрузки (load mask)",
-            ),
-          );
-        }
+        if (!mask || getComputedStyle(mask).display === "none") return resolve();
+        if (Date.now() - start > timeout) return reject(new Error("Таймаут ожидания исчезновения маски загрузки (load mask)"));
         setTimeout(check, 100);
       })();
     });
   }
 
-  // Функция теперь принимает профиль ожидания
   function waitForGridRowsSettled(doc, profile = WAIT_PROFILES.DEFAULT) {
-    const { timeout, stableDelay } = profile;
     return new Promise((resolve, reject) => {
-      let lastCount = -1;
-      let stableSince = Date.now();
-      const start = Date.now();
-      (function check() {
-        const rows = doc.querySelectorAll("tr.x-grid-row");
-        const count = rows.length;
-
-        if (count !== lastCount) {
-          lastCount = count;
-          stableSince = Date.now();
-        } else if (Date.now() - stableSince >= stableDelay) {
-          return resolve(count);
-        }
-
-        if (Date.now() - start > timeout) {
-          return reject(
-            new Error(
-              `Таймаут (${timeout}ms) ожидания стабилизации строк в гриде (последнее кол-во: ${count})`,
-            ),
-          );
-        }
-        setTimeout(check, 100);
-      })();
+      const { timeout, stableDelay } = profile;
+      const gridView = doc.querySelector('.x-grid-view');
+      if (!gridView) return reject(new Error("Не удалось найти контейнер грида (.x-grid-view) для наблюдения."));
+      let inactivityTimer, hardTimeout;
+      const cleanup = () => { clearTimeout(inactivityTimer); clearTimeout(hardTimeout); observer.disconnect(); };
+      const onStable = () => { cleanup(); resolve(gridView.querySelectorAll('tr.x-grid-row').length); };
+      const resetTimer = () => { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(onStable, stableDelay); };
+      const observer = new MutationObserver(resetTimer);
+      hardTimeout = setTimeout(() => { cleanup(); reject(new Error(`Жесткий таймаут (${timeout}ms) ожидания стабилизации грида.`)); }, timeout);
+      observer.observe(gridView, { childList: true, subtree: true });
+      resetTimer();
     });
   }
 
@@ -90,42 +88,18 @@ async function injectionTargetFunction(enrichedDataForForm) {
     return new Promise((resolve, reject) => {
       const start = Date.now();
       (function check() {
-        const modal = [...doc.querySelectorAll(".x-window")].find(
-          (el) =>
-            el.offsetParent !== null && el.innerText.includes("Выбор элемента"),
-        );
-
-        const isCurrentlyOpen = !!modal;
-
-        if (isCurrentlyOpen === isOpen) {
-          return resolve(modal);
-        }
-
-        if (Date.now() - start > timeout) {
-          return reject(
-            new Error(
-              `Таймаут ожидания ${isOpen ? "открытия" : "закрытия"} окна справочника.`,
-            ),
-          );
-        }
+        const modal = [...doc.querySelectorAll(".x-window")].find(el => el.offsetParent !== null && el.innerText.includes("Выбор элемента"));
+        if (!!modal === isOpen) return resolve(modal);
+        if (Date.now() - start > timeout) return reject(new Error(`Таймаут ожидания ${isOpen ? "открытия" : "закрытия"} окна справочника.`));
         setTimeout(check, 200);
       })();
     });
   }
 
-  // ——— Функции заполнения полей ———
-
   function fillPlainInput(doc, selector, value) {
     const inp = doc.querySelector(selector);
-
-    if (!inp) {
-      console.warn(`[PLAIN INPUT] Не найден элемент ${selector}`);
-      allElementsFound = false;
-      return;
-    }
-
-    inp.focus();
-    inp.value = value;
+    if (!inp) { console.warn(`[PLAIN INPUT] Не найден элемент ${selector}`); allElementsFound = false; return; }
+    inp.focus(); inp.value = value;
     inp.dispatchEvent(new Event("input", { bubbles: true }));
     inp.dispatchEvent(new Event("change", { bubbles: true }));
     inp.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
@@ -133,518 +107,118 @@ async function injectionTargetFunction(enrichedDataForForm) {
 
   function fillDateInput({ doc, selector, value }) {
     const input = doc.querySelector(selector);
-
-    if (!input) {
-      allElementsFound = false;
-      return;
-    }
-
-    input.focus();
-    input.value = value;
+    if (!input) { allElementsFound = false; return; }
+    input.focus(); input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
     input.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
   }
 
-  async function selectFromDropdown({
-    doc,
-    iframeWindow,
-    fieldSelector,
-    value,
-  }) {
+  async function selectFromDropdown({ doc, iframeWindow, fieldSelector, value }) {
     const input = await waitForElement(doc, fieldSelector);
     if (!input) return;
-    const trigger = input
-      .closest(".x-form-item-body")
-      ?.querySelector(".x-form-trigger");
-
-    if (!trigger) {
-      throw new Error(
-        `Триггер для выпадающего списка ${fieldSelector} не найден.`,
-      );
-    }
-
-    ["mousedown", "mouseup", "click"].forEach((evt) =>
-      trigger.dispatchEvent(
-        new MouseEvent(evt, {
-          bubbles: true,
-          cancelable: true,
-          view: iframeWindow,
-        }),
-      ),
-    );
-
-    const dropdownList = await waitForElement(
-      doc,
-      ".x-boundlist:not(.x-boundlist-hidden)",
-      5000,
-    );
-
+    const trigger = input.closest(".x-form-item-body")?.querySelector(".x-form-trigger");
+    if (!trigger) throw new Error(`Триггер для выпадающего списка ${fieldSelector} не найден.`);
+    ["mousedown", "mouseup", "click"].forEach(evt => trigger.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow })));
+    const dropdownList = await waitForElement(doc, ".x-boundlist:not(.x-boundlist-hidden)", 5000);
     await waitForElement(dropdownList, ".x-boundlist-item", 2000);
-
-    const options = Array.from(
-      dropdownList.querySelectorAll(".x-boundlist-item"),
-    );
-
-    const targetOption = options.find(
-      (opt) => opt.textContent.trim() === value,
-    );
-
-    if (!targetOption) {
-      doc.body.click();
-
-      throw new Error(
-        `Опция "${value}" не найдена в выпадающем списке для ${fieldSelector}.`,
-      );
-    }
-
-    ["mousedown", "mouseup", "click"].forEach((evt) =>
-      targetOption.dispatchEvent(
-        new MouseEvent(evt, {
-          bubbles: true,
-          cancelable: true,
-          view: iframeWindow,
-        }),
-      ),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    const options = Array.from(dropdownList.querySelectorAll(".x-boundlist-item"));
+    const targetOption = options.find(opt => opt.textContent.trim() === value);
+    if (!targetOption) { doc.body.click(); throw new Error(`Опция "${value}" не найдена в выпадающем списке.`); }
+    ["mousedown", "mouseup", "click"].forEach(evt => targetOption.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow })));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
-  // Функция теперь принимает waitProfile
-  async function selectFromReferenceField({
-    doc,
-    iframeWindow,
-    fieldSelector,
-    column,
-    value,
-    waitProfile = WAIT_PROFILES.DEFAULT,
-  }) {
+  async function selectFromReferenceField({ doc, iframeWindow, fieldSelector, column, value, waitProfile }) {
     const input = await waitForElement(doc, fieldSelector);
     if (!input) return;
     input.focus();
-
-    ["mousedown", "mouseup", "click"].forEach((evt) =>
-      input.dispatchEvent(
-        new MouseEvent(evt, {
-          bubbles: true,
-          cancelable: true,
-          view: iframeWindow,
-        }),
-      ),
-    );
-
+    ["mousedown", "mouseup", "click"].forEach(evt => input.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow })));
     await waitForLoadMaskGone(doc);
     await waitForReferenceWindow(doc, true);
-
-    // Используем переданный профиль!
     await waitForGridRowsSettled(doc, waitProfile);
     const headerText = column.trim();
-    const allInputs = Array.from(
-      doc.querySelectorAll(".x-grid-header-ct input[type='text']"),
-    );
-
-    const filterInput = allInputs.find((inp) => {
-      const colHdr =
-        inp.closest(".x-column-header") ||
-        inp.closest("table")?.parentElement?.closest(".x-column-header");
-
-      return (
-        colHdr?.querySelector(".x-column-header-text")?.textContent.trim() ===
-        headerText
-      );
-    });
-
-    if (!filterInput)
-      throw new Error(`Фильтр-инпут для колонки "${headerText}" не найден`);
-
-    filterInput.focus();
-    filterInput.value = value;
+    const filterInput = Array.from(doc.querySelectorAll(".x-grid-header-ct input[type='text']")).find(inp => inp.closest(".x-column-header")?.querySelector(".x-column-header-text")?.textContent.trim() === headerText);
+    if (!filterInput) throw new Error(`Фильтр-инпут для колонки "${headerText}" не найден`);
+    filterInput.focus(); filterInput.value = value;
     filterInput.dispatchEvent(new Event("input", { bubbles: true }));
     filterInput.dispatchEvent(new Event("change", { bubbles: true }));
-
-    ["keydown", "keypress", "keyup"].forEach((type) =>
-      filterInput.dispatchEvent(
-        new KeyboardEvent(type, {
-          key: "Enter",
-          code: "Enter",
-          keyCode: 13,
-          which: 13,
-          bubbles: true,
-          cancelable: true,
-        }),
-      ),
-    );
-
+    ["keydown", "keypress", "keyup"].forEach(type => filterInput.dispatchEvent(new KeyboardEvent(type, { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true })));
     filterInput.blur();
     await waitForLoadMaskGone(doc);
     await waitForGridRowsSettled(doc, waitProfile);
 
-    const checker = doc.querySelector(
-      "tr.x-grid-row td.x-grid-cell-row-checker",
-    );
+    const checker = doc.querySelector("tr.x-grid-row td.x-grid-cell-row-checker");
+    if (!checker) throw new Error(`Чекбокс для выбора строки в справочнике не найден.`);
+    const parentRow = checker.closest('tr.x-grid-row');
+    if (!parentRow) throw new Error('Не удалось найти родительский элемент <tr> для чекбокса.');
 
-    if (!checker)
-      throw new Error(
-        `Чекбокс для выбора строки в справочнике не найден (значение: ${value})`,
-      );
+    ["mousedown", "mouseup", "click"].forEach(evt => checker.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow })));
 
-    ["mousedown", "mouseup", "click"].forEach((evt) =>
-      checker.dispatchEvent(
-        new MouseEvent(evt, {
-          bubbles: true,
-          cancelable: true,
-          view: iframeWindow,
-        }),
-      ),
-    );
+    await waitForRowSelected(parentRow, 'x-grid-row-selected');
 
-    const btn = Array.from(doc.querySelectorAll("span.x-btn-inner"))
-      .find((s) => s.textContent.trim() === "Выбрать")
-      ?.closest(".x-btn");
-
+    const btn = Array.from(doc.querySelectorAll("span.x-btn-inner")).find(s => s.textContent.trim() === "Выбрать")?.closest(".x-btn");
     if (!btn) throw new Error("Кнопка 'Выбрать' в справочнике не найдена");
 
-    ["mousedown", "mouseup", "click"].forEach((evt) =>
-      btn.dispatchEvent(
-        new MouseEvent(evt, {
-          bubbles: true,
-          cancelable: true,
-          view: iframeWindow,
-        }),
-      ),
-    );
-    await waitForReferenceWindow(doc, false);
-  }
+    ["mousedown", "mouseup", "click"].forEach(evt => btn.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow })));
 
-  // ——— ОСНОВНОЙ ЗАПУСК ———
+    await waitForReferenceWindow(doc, false);
+//    await new Promise(resolve => setTimeout(resolve, 500));
+  }
 
   console.log("[PAGE INJECTOR] Вставка данных:", dataMapToInsert);
 
   function findCorrectIframeAndDocument() {
-      // Получаем все iframe на главной странице
-      const iframes = document.querySelectorAll('iframe');
-      console.log(`[PAGE INJECTOR] Найдено iframes на странице: ${iframes.length}`);
-
-      for (const iframe of iframes) {
-          try {
-              // Пытаемся получить доступ к документу внутри iframe
-              const innerDoc = iframe.contentWindow.document;
-              // Ищем наш "якорный" элемент внутри этого документа
-              if (innerDoc && innerDoc.querySelector("input[name='ReferralHospitalizationNumberTicket']")) {
-                  console.log("[PAGE INJECTOR] ✅ Найден правильный iframe, содержащий форму!");
-                  return { iframe, doc: innerDoc }; // Возвращаем и фрейм, и его документ
-              }
-          } catch (e) {
-              // Ошибки доступа (cross-origin) игнорируем, это не наш iframe
-              console.warn(`[PAGE INJECTOR] Не удалось получить доступ к содержимому iframe. Скорее всего, это не тот фрейм. Ошибка: ${e.message}`);
-          }
-      }
-      // Если цикл завершился, а мы ничего не нашли
-      console.error("[PAGE INJECTOR] Ни один из iframe на странице не содержит целевую форму.");
-      return { iframe: null, doc: null };
+    const iframes = document.querySelectorAll('iframe');
+    for (const iframe of iframes) {
+      try {
+        const innerDoc = iframe.contentWindow.document;
+        if (innerDoc && innerDoc.querySelector("input[name='ReferralHospitalizationNumberTicket']")) return { iframe, doc: innerDoc };
+      } catch (e) { console.warn(`[PAGE INJECTOR] Iframe access error: ${e.message}`); }
+    }
+    return { iframe: null, doc: null };
   }
 
   const { iframe, doc } = findCorrectIframeAndDocument();
-
   if (!iframe || !doc) {
-      chrome.runtime.sendMessage({
-          action: "injectionError",
-          error: "Не удалось найти iframe с формой ГИС ОМС на странице.",
-      });
-      return;
+    chrome.runtime.sendMessage({ action: "injectionError", error: "Не удалось найти iframe с формой ГИС ОМС." });
+    return;
   }
 
+  let executionError = null;
   try {
-    let value;
+    const fillTasks = [
+      { type: 'ref', name: 'ReferralHospitalizationMedIndications', column: 'Код' }, { type: 'ref', name: 'VidMpV008', column: 'Код' }, { type: 'ref', name: 'HospitalizationInfoV006', column: 'Код' }, { type: 'ref', name: 'HospitalizationInfoV014', column: 'Код' }, { type: 'ref', name: 'HospitalizationInfoSubdivision', column: 'Краткое наименование' }, { type: 'ref', name: 'HospitalizationInfoSpecializedMedicalProfile', column: 'Код' }, { type: 'ref', name: 'HospitalizationInfoV020', column: 'Код' }, { type: 'ref', name: 'HospitalizationInfoC_ZABV027', column: 'Код' }, { type: 'ref', name: 'ResultV009', column: 'Код' }, { type: 'ref', name: 'IshodV012', column: 'Код' }, { type: 'ref', name: 'HospitalizationInfoDiagnosisMainDisease', column: 'Код МКБ' }, { type: 'ref', name: 'ReferralHospitalizationSendingDepartment', column: 'Реестровый номер' }, { type: 'date', name: 'ReferralHospitalizationDateTicket' }, { type: 'date', name: 'DateBirth' }, { type: 'date', name: 'TreatmentDateStart' }, { type: 'date', name: 'TreatmentDateEnd' }, { type: 'dropdown', name: 'Gender' }, { type: 'plain', name: 'ReferralHospitalizationNumberTicket' }, { type: 'plain', name: 'Enp' }, { type: 'plain', name: 'HospitalizationInfoNameDepartment' }, { type: 'plain', name: 'HospitalizationInfoOfficeCode' }, { type: 'plain', name: 'CardNumber' },
+    ];
 
-    // --- Последовательное и УСЛОВНОЕ заполнение полей из справочников с указанием ПРОФИЛЯ ОЖИДАНИЯ ---
-    // БЫСТРЫЕ СПРАВОЧНИКИ profile - WAIT_PROFILES.FAST
-
-    if (
-      (value =
-        dataMapToInsert["input[name='ReferralHospitalizationMedIndications']"])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='ReferralHospitalizationMedIndications']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='VidMpV008']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='VidMpV008']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='HospitalizationInfoV006']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoV006']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='HospitalizationInfoV014']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoV014']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if (
-      (value = dataMapToInsert["input[name='HospitalizationInfoSubdivision']"])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoSubdivision']",
-        column: "Краткое наименование",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-
-    if (
-      (value =
-        dataMapToInsert[
-          "input[name='HospitalizationInfoSpecializedMedicalProfile']"
-        ])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector:
-          "input[name='HospitalizationInfoSpecializedMedicalProfile']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='HospitalizationInfoV020']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoV020']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if (
-      (value = dataMapToInsert["input[name='HospitalizationInfoC_ZABV027']"])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoC_ZABV027']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='ResultV009']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='ResultV009']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='IshodV012']"])) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='IshodV012']",
-        column: "Код",
-        value,
-        waitProfile: WAIT_PROFILES.FAST,
-      });
-    }
-
-    // СПРАВОЧНИКИ СРЕДНЕЙ СКОРОСТИ profile - WAIT_PROFILES.DEFAULT
-    if (
-      (value =
-        dataMapToInsert[
-          "input[name='HospitalizationInfoDiagnosisMainDisease']"
-        ])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='HospitalizationInfoDiagnosisMainDisease']",
-        column: "Код МКБ",
-        value,
-        waitProfile: WAIT_PROFILES.DEFAULT,
-      });
-    }
-
-    // МЕДЛЕННЫЕ И ТЯЖЕЛЫЕ СПРАВОЧНИКИ profile - WAIT_PROFILES.SLOW
-    if (
-      (value =
-        dataMapToInsert[
-          "input[name='ReferralHospitalizationSendingDepartment']"
-        ])
-    ) {
-      await selectFromReferenceField({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='ReferralHospitalizationSendingDepartment']",
-        column: "Реестровый номер",
-        value,
-        waitProfile: WAIT_PROFILES.SLOW,
-      });
-    }
-
-
-    // --- Условное заполнение простых полей и дат (они быстрые) ---
-
-    if (
-      (value =
-        dataMapToInsert["input[name='ReferralHospitalizationDateTicket']"])
-    ) {
-      fillDateInput({
-        doc,
-        selector: "input[name='ReferralHospitalizationDateTicket']",
-        value,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='DateBirth']"])) {
-      fillDateInput({ doc, selector: "input[name='DateBirth']", value });
-    }
-
-    if ((value = dataMapToInsert["input[name='TreatmentDateStart']"])) {
-      fillDateInput({
-        doc,
-        selector: "input[name='TreatmentDateStart']",
-        value,
-      });
-    }
-
-    if ((value = dataMapToInsert["input[name='TreatmentDateEnd']"])) {
-      fillDateInput({ doc, selector: "input[name='TreatmentDateEnd']", value });
-    }
-
-    if (
-      (value =
-        dataMapToInsert["input[name='ReferralHospitalizationNumberTicket']"])
-    ) {
-      fillPlainInput(
-        doc,
-        "input[name='ReferralHospitalizationNumberTicket']",
-        value,
-      );
-    }
-
-    if ((value = dataMapToInsert["input[name='Enp']"])) {
-      fillPlainInput(doc, "input[name='Enp']", value);
-    }
-
-    if ((value = dataMapToInsert["input[name='Gender']"])) {
-      await selectFromDropdown({
-        doc,
-        iframeWindow: iframe.contentWindow,
-        fieldSelector: "input[name='Gender']",
-        value,
-      });
-    }
-
-    if (
-      (value =
-        dataMapToInsert["input[name='HospitalizationInfoNameDepartment']"])
-    ) {
-      fillPlainInput(
-        doc,
-        "input[name='HospitalizationInfoNameDepartment']",
-        value,
-      );
-    }
-
-    if (
-      (value = dataMapToInsert["input[name='HospitalizationInfoOfficeCode']"])
-    ) {
-      fillPlainInput(doc, "input[name='HospitalizationInfoOfficeCode']", value);
-    }
-
-    if ((value = dataMapToInsert["input[name='CardNumber']"])) {
-      fillPlainInput(doc, "input[name='CardNumber']", value);
-    }
-
-    // --- Отправка сообщения о результате В КОНЦЕ ---
-
-    const operations = dataMapToInsert.medical_service_data;
-    const diagnoses = dataMapToInsert.additional_diagnosis_data;
-    const discharge = dataMapToInsert.discharge_summary;
-    const hasOperations = operations && operations.length > 0;
-    const hasDiagnoses = diagnoses && diagnoses.length > 0;
-    const hasDischarge = discharge && Object.values(discharge).some((v) => v);
-
-    if (hasOperations || hasDiagnoses || !allElementsFound || hasDischarge) {
-      let title = "";
-
-      if (hasOperations || hasDiagnoses || hasDischarge) {
-        title = "Найдены дополнительные данные (услуги, диагнозы, эпикриз):";
-      } else {
-        title = "Данные вставлены.";
+    for (const task of fillTasks) {
+      const selector = `input[name='${task.name}']`;
+      const value = dataMapToInsert[selector];
+      if (!value) continue;
+      console.log(`[pageInjector] Заполняем поле: ${task.name}`);
+      switch (task.type) {
+        case 'ref': await selectFromReferenceField({ doc, iframeWindow: iframe.contentWindow, fieldSelector: selector, column: task.column, value, waitProfile: FIELD_COMPLEXITY_MAP[task.name] || WAIT_PROFILES.DEFAULT }); break;
+        case 'date': fillDateInput({ doc, selector, value }); break;
+        case 'dropdown': await selectFromDropdown({ doc, iframeWindow: iframe.contentWindow, fieldSelector: selector, value }); break;
+        case 'plain': fillPlainInput(doc, selector, value); break;
       }
-
-      chrome.runtime.sendMessage({
-        action: "showFinalResultInPage",
-        data: { title, operations, diagnoses, discharge: discharge }, // Передаем и операции, и диагнозы
-      });
+//      await new Promise(resolve => setTimeout(resolve, 150));
     }
-
-    return { success: true };
   } catch (error) {
-    console.error("[PAGE INJECTOR] Ошибка во время выполнения:", error);
-
-    chrome.runtime.sendMessage({
-      action: "injectionError",
-      error: error.message || String(error),
-    });
-
-    return { success: false, error: error.message || String(error) };
-  }
-}
-
-export function injectData(enrichedDataForForm) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (chrome.runtime.lastError || !tabs || !tabs.length) {
-      console.error(
-        "[PAGE INJECTOR] Ошибка chrome.tabs.query:",
-        chrome.runtime.lastError?.message,
-      );
-
-      return;
+    executionError = error;
+  } finally {
+    if (executionError) {
+      chrome.runtime.sendMessage({ action: "injectionError", error: `Произошла ошибка: ${executionError.message || String(executionError)}` });
+      chrome.runtime.sendMessage({ action: "formFillError", error: executionError.message || String(executionError) });
+    } else {
+      const patientName = dataMapToInsert.patientFIO || dataMapToInsert["input[name='CardNumber']"] || "пациента";
+      chrome.runtime.sendMessage({ action: "formFillComplete", patientName: patientName });
+      const { medical_service_data: operations, additional_diagnosis_data: diagnoses, discharge_summary: discharge } = dataMapToInsert;
+      if (operations?.length || diagnoses?.length || !allElementsFound || discharge) {
+        let title = "Найдены дополнительные данные:";
+        if (!allElementsFound) title = "Данные вставлены, но некоторые поля не найдены.";
+        chrome.runtime.sendMessage({ action: "showFinalResultInPage", data: { title, operations, diagnoses, discharge } });
+      }
     }
-
-    chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: injectionTargetFunction,
-      args: [enrichedDataForForm],
-    });
-  });
+  }
 }

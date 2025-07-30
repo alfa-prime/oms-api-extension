@@ -2,7 +2,6 @@
 
 import * as ui from "./ui.js";
 import * as api from "./apiService.js";
-import { injectData } from "./pageInjector.js";
 
 const resultsList = document.getElementById("results");
 
@@ -73,11 +72,13 @@ export async function searchPatient() {
           const enrichmentPayload = { started_data: item };
           const enrichedDataForForm = await api.fetchEnrichedDataForPatient(enrichmentPayload);
 
-          // Просто вызываем injectData и передаем все данные.
-          // Не используем колбэк.
-          injectData(enrichedDataForForm);
+          // 1. Отправляем сообщение с данными фоновому скрипту для выполнения в фоне.
+          chrome.runtime.sendMessage({
+              action: 'startFormFill',
+              data: enrichedDataForForm
+          });
 
-          // Закрываем popup немедленно, не дожидаясь завершения.
+          // 2. Немедленно закрываем popup. Фоновый скрипт сделает остальную работу.
           window.close();
 
         } catch (err) {

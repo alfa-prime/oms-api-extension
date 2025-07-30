@@ -3,14 +3,15 @@
   "name": "ЕВМИАС -> ОМС",
   "version": "1.0",
   "description": "Находит данные по ФИО и вставляет их в форму.",
-  "permissions": ["scripting", "activeTab", "tabs", "windows", "storage"],
+  "permissions": ["scripting", "activeTab", "tabs", "windows", "storage", "notifications"],
   "host_permissions": [
     "http://0.0.0.0:8000/*",
     "http://192.168.0.118:8082/",
     "https://gisoms.ffoms.gov.ru/*"
   ],
   "background": {
-    "service_worker": "js/background.js"
+    "service_worker": "js/background.js",
+    "type": "module"
   },
   "action": {
     "default_title": "ЕВМИАС -> ОМС",
@@ -28,7 +29,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["js/*.js", "css/*.css", "final-view.html"],
+      "resources": ["js/*.js", "css/*.css", "final-view.html", "images/*"],
       "matches": ["<all_urls>"]
     }
   ]
