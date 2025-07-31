@@ -5,9 +5,9 @@ export async function injectionTargetFunction(enrichedDataForForm) {
   let allElementsFound = true;
 
   const WAIT_PROFILES = {
-    FAST: { timeout: 13000, stableDelay: 1000 },
+    FAST: { timeout: 12000, stableDelay: 1000 },
     DEFAULT: { timeout: 20000, stableDelay: 1400 },
-    SLOW: { timeout: 32000, stableDelay: 2000 },
+    SLOW: { timeout: 32000, stableDelay: 2500 },
   };
 
   const FIELD_COMPLEXITY_MAP = {
@@ -163,7 +163,6 @@ export async function injectionTargetFunction(enrichedDataForForm) {
     ["mousedown", "mouseup", "click"].forEach(evt => btn.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: iframeWindow })));
 
     await waitForReferenceWindow(doc, false);
-//    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
   console.log("[PAGE INJECTOR] Вставка данных:", dataMapToInsert);
@@ -202,7 +201,6 @@ export async function injectionTargetFunction(enrichedDataForForm) {
         case 'dropdown': await selectFromDropdown({ doc, iframeWindow: iframe.contentWindow, fieldSelector: selector, value }); break;
         case 'plain': fillPlainInput(doc, selector, value); break;
       }
-//      await new Promise(resolve => setTimeout(resolve, 150));
     }
   } catch (error) {
     executionError = error;
