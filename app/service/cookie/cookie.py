@@ -97,7 +97,13 @@ async def authorize(cookies: dict, http_service: HTTPXClient) -> dict:
     headers = {
         "Origin": settings.BASE_HEADERS_ORIGIN_URL,
         "Referer": settings.BASE_HEADERS_REFERER_URL,
-        "X-Requested-With": "XMLHttpRequest",  # Тоже важный заголовок из реального запроса
+        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0",
+        "Accept": "*/*",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Priority": "u=0"
     }
 
     params = {"c": "main", "m": "index", "method": "Logon", "login": settings.EVMIAS_LOGIN}
@@ -140,6 +146,15 @@ async def fetch_final_cookies(cookies: dict, http_service: HTTPXClient) -> dict:
     """Получает финальную часть cookies через POST-запрос к сервлету."""
     url = f"{BASE_URL}ermp/servlets/dispatch.servlet"
     headers = {
+        "Origin": settings.BASE_HEADERS_ORIGIN_URL,
+        "Referer": settings.BASE_HEADERS_REFERER_URL,
+        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0",
+        "Accept": "*/*",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Priority": "u=0",
         "Content-Type": "text/x-gwt-rpc; charset=utf-8",
         "X-Gwt-Permutation": settings.EVMIAS_PERMUTATION,
         "X-Gwt-Module-Base": "https://evmias.fmba.gov.ru/ermp/",
@@ -212,6 +227,17 @@ async def check_existing_cookies(redis_client: redis.Redis, http_service: HTTPXC
         logger.info("cookies для проверки не найдены в Redis.")
         return False
 
+    headers = {
+        "Origin": settings.BASE_HEADERS_ORIGIN_URL,
+        "Referer": settings.BASE_HEADERS_REFERER_URL,
+        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0",
+        "Accept": "*/*",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Priority": "u=0"
+    }
     params = {"c": "Common", "m": "getCurrentDateTime"}
     data = {"is_activerules": "true"}
 
@@ -223,6 +249,7 @@ async def check_existing_cookies(redis_client: redis.Redis, http_service: HTTPXC
             params=params,
             cookies=cookies,
             data=data,
+            headers=headers,
             raise_for_status=False
         )
 

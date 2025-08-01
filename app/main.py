@@ -52,7 +52,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,  # noqa
     allow_origin_regex=settings.CORS_ALLOW_REGEX,
-    # allow_origins=['*'],
+    allow_origins=['*'],
     allow_credentials=True,
     allow_methods=["*"],  # Разрешить все методы (GET, POST, и т.д.)
     allow_headers=["*"],  # Разрешить все заголовки
