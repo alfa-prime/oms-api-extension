@@ -82,9 +82,30 @@ async def load_cookies_from_redis(redis_client: redis.Redis) -> dict:
 
 async def fetch_initial_cookies(http_service: HTTPXClient) -> dict:
     """Получает первую часть cookies от внешнего сервиса."""
+    headers = {
+        "Origin": settings.BASE_HEADERS_ORIGIN_URL,
+        "Referer": settings.BASE_HEADERS_REFERER_URL,
+        "X-Requested-With": "XMLHttpRequest",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0",
+        "Accept": "*/*",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Priority": "u=0",
+        "Content-Type": "text/x-gwt-rpc; charset=utf-8",
+    }
     params = {"c": "portal", "m": "promed", "from": "promed"}
-    # Используем http_service, обработка ошибок внутри fetch
-    response = await http_service.fetch(url=BASE_URL, method="GET", params=params, raise_for_status=False)
+
+    response = await http_service.fetch(
+        url=BASE_URL,
+        method="GET",
+        headers=headers,
+        params=params,
+        raise_for_status=False
+    )
+
+    logger.info(f"Первая часть cookies получена: {response}")
+
     if response["status_code"] != 200:
         logger.error(f"Не удалось получить начальные cookies, статус: {response['status_code']}")
         raise HTTPException(status_code=response["status_code"], detail="Не удалось получить начальные cookies")
@@ -103,7 +124,8 @@ async def authorize(cookies: dict, http_service: HTTPXClient) -> dict:
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "Priority": "u=0"
+        "Priority": "u=0",
+        "Content-Type": "text/x-gwt-rpc; charset=utf-8",
     }
 
     params = {"c": "main", "m": "index", "method": "Logon", "login": settings.EVMIAS_LOGIN}
@@ -125,6 +147,8 @@ async def authorize(cookies: dict, http_service: HTTPXClient) -> dict:
         data=data,
         raise_for_status=False
     )
+
+    logger.info(f"авторизация: {response}")
 
     if response["status_code"] != 200 or "true" not in response.get("text", ""):
         logger.error(
@@ -160,7 +184,6 @@ async def fetch_final_cookies(cookies: dict, http_service: HTTPXClient) -> dict:
         "X-Gwt-Module-Base": "https://evmias.fmba.gov.ru/ermp/",
     }
     data = settings.EVMIAS_SECRET
-    # Используем http_service
     response = await http_service.fetch(
         url=url,
         method="POST",
@@ -169,6 +192,8 @@ async def fetch_final_cookies(cookies: dict, http_service: HTTPXClient) -> dict:
         data=data,
         raise_for_status=False
     )
+
+    logger.info(f"финальная часть кук: {response}")
 
     if response["status_code"] != 200:
         logger.error(f"Ошибка получения второй части cookies: {response['status_code']}")
