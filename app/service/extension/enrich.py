@@ -125,8 +125,8 @@ async def enrich_data(
     department_name = await get_department_name(started_data)
     department_code = await get_department_code(department_name)
 
-    medical_care_profile = await get_medical_care_profile(movement_data)
-    bed_profile_code = await get_bed_profile_code(movement_data, department_name)
+    bed_profile_code, corrected_bed_profile_name = await get_bed_profile_code(movement_data, department_name)
+    medical_care_profile = await get_medical_care_profile(movement_data, corrected_bed_profile_name)
 
 
     polis_number = person_data.get("Person_EdNum", "")

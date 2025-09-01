@@ -36,11 +36,7 @@ bed_profile_correction_rules = {
             "replacement": "проктологические"
         },
         {
-            "pattern": re.compile(r"^K4[0-6]\.\d$"),
-            "replacement": "абдоминальной хирургии"
-        },
-        {
-            "pattern": re.compile(r"^K80\.1$"),
+            "pattern": re.compile(r"^(K4[0-6]\.\d|K80\.1)$"),
             "replacement": "абдоминальной хирургии"
         },
         {
@@ -54,16 +50,12 @@ bed_profile_correction_rules = {
             "replacement": "проктологические"
         },
         {
-            "pattern": re.compile(r"^K4[0-6]\.\d$"),
+            "pattern": re.compile(r"^(K4[0-6]\.\d|K80\.1)$"),
             "replacement": "абдоминальной хирургии"
         },
         {
             "pattern": re.compile(r"^(I70\.2|I70\.8)$"),
             "replacement": "сосудистой хирургии"
-        },
-        {
-            "pattern": re.compile(r"^K80\.1$"),
-            "replacement": "абдоминальной хирургии"
         },
     ],
     "Дневной стационар": [
@@ -72,7 +64,7 @@ bed_profile_correction_rules = {
             "replacement": "проктологические"
         },
         {
-            "pattern": re.compile(r"^K4[0-6]\.\d$"),
+            "pattern": re.compile(r"^(K4[0-6]\.\d|K80\.1)$"),
             "replacement": "абдоминальной хирургии"
         },
         {
@@ -84,6 +76,10 @@ bed_profile_correction_rules = {
         {
             "pattern": re.compile(r"^(M42\.1|M51\.1)$"),
             "replacement": "нейрохирургические"
+        },
+        {
+            "pattern": re.compile(r"^(I65.3)$"),
+            "replacement": "сосудистой хирургии"
         },
     ]
 }
