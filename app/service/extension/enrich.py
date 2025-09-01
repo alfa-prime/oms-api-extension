@@ -122,12 +122,12 @@ async def enrich_data(
     referred_organization = await get_referred_organization(cookies, http_service, referred_data)
     disease_data = await fetch_disease_data(cookies, http_service, movement_data)
 
-
-
     department_name = await get_department_name(started_data)
     department_code = await get_department_code(department_name)
 
+    medical_care_profile = await get_medical_care_profile(movement_data)
     bed_profile_code = await get_bed_profile_code(movement_data, department_name)
+
 
     polis_number = person_data.get("Person_EdNum", "")
     person_birthday = started_data.get("Person_Birthday", "")
@@ -139,7 +139,7 @@ async def enrich_data(
 
     medical_care_conditions = await get_medical_care_condition(department_name)
     medical_care_form = await get_medical_care_form(referred_data)
-    medical_care_profile = await get_medical_care_profile(movement_data)
+
 
     outcome_code = await get_outcome_code(disease_data)
     disease_type_code = await get_disease_type_code(disease_data)

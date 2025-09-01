@@ -64,41 +64,32 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         return;
     }
 
-    // Этот слушатель остается для ошибок
-    if (message.action === 'injectionError') {
+    // Логируем финальные сообщения в консоль, так как уведомлений у нас нет
+    if (message.action === 'injectionError' || message.action === 'formFillError') {
         console.error(`[Background] Ошибка от pageInjector: ${message.error}`);
         return;
     }
 
-    if (message.action === 'formFillError') {
-        chrome.notifications.create({
-            type: 'progress',
-            iconUrl: chrome.runtime.getURL('images/icon.png'),
-            title: 'ЕВМИАС -> ОМС: Ошибка!',
-            message: `Заполнение формы прервано ошибкой: ${message.error}`,
-            progress: 100,
-            priority: 2
-        });
+
+    if (message.action === 'formFillError' || message.action === 'formFillComplete') {
+        // По-прежнему останавливаем аудио, это важно
+        if (isOffscreenApiSupported && await chrome.offscreen.hasDocument()) {
+            await sendActionToOffscreen('stop_audio');
+            await chrome.offscreen.closeDocument();
+            console.log('[Background] Воспроизведение тишины остановлено, документ закрыт.');
+        }
+
+        // Вместо уведомлений просто выводим информацию в консоль для отладки
+        if (message.action === 'formFillError') {
+            console.error(`[Background] Заполнение формы завершилось с ошибкой: ${message.error}`);
+        } else { // formFillComplete
+            const patientInfo = message.patientName ? `для пациента ${message.patientName}` : '';
+            console.log(`[Background] Заполнение формы успешно завершено ${patientInfo}.`);
+        }
         return;
     }
-
-    if (message.action === 'formFillComplete') {
-        const patientInfo = message.patientName ? `для пациента ${message.patientName}` : '';
-        console.log('[Background] Получено сообщение formFillComplete. Создаем уведомление...');
-        chrome.notifications.create({
-            type: 'progress',
-            iconUrl: chrome.runtime.getURL('images/icon.png'),
-            title: 'ЕВМИАС -> ОМС',
-            message: `Заполнение формы успешно завершено ${patientInfo}.`,
-            progress: 100,
-            priority: 2
-        });
-        return;
-    }
-
 
 });
-
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {

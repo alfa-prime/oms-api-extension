@@ -248,7 +248,6 @@ async def check_existing_cookies(redis_client: redis.Redis, http_service: HTTPXC
 
 
 async def set_cookies(
-        # Внедряем зависимости через Annotated
         http_service: Annotated[HTTPXClient, Depends(get_http_service)],
         redis_client: Annotated[redis.Redis, Depends(get_redis_client)]
 ) -> dict:

@@ -40,6 +40,10 @@ bed_profile_correction_rules = {
             "replacement": "абдоминальной хирургии"
         },
         {
+            "pattern": re.compile(r"^K80\.1$"),
+            "replacement": "абдоминальной хирургии"
+        },
+        {
             "pattern": re.compile(r"^(I70\.2|I70\.8)$"),
             "replacement": "сосудистой хирургии"
         },
@@ -56,6 +60,10 @@ bed_profile_correction_rules = {
         {
             "pattern": re.compile(r"^(I70\.2|I70\.8)$"),
             "replacement": "сосудистой хирургии"
+        },
+        {
+            "pattern": re.compile(r"^K80\.1$"),
+            "replacement": "абдоминальной хирургии"
         },
     ],
     "Дневной стационар": [
